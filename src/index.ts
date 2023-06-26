@@ -26,7 +26,7 @@ function registerRoutableObject(object: Object) {
 function setRoutesMetadata(flatTree: Array<Route>, parentPath = '') {
   flatTree.forEach((node) => {
     const pathName = parentPath ? `${parentPath}.${node.name}` : node.name
-    node.meta = { pathName }
+    node.meta.pathName = pathName;
 
     if (node.children && node.children.length > 0) {
       setRoutesMetadata(node.children, pathName)
