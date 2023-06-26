@@ -1,0 +1,11 @@
+{
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "include": [
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "experimentalDecorators": true,
+    "types": ["node"]
+  }
+}
