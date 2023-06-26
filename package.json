@@ -1,6 +1,6 @@
 {
   "name": "vue3-routable-class",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Small utility to annotate classes of objects to be activated/deactivated upon vue-router routes change ",
   "main": "src/index.ts",
   "author": "Nicola Dal Pont",

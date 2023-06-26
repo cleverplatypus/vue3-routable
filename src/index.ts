@@ -48,12 +48,12 @@ function matchesRoute(config: RoutableConfig, route: Route) {
   }
 }
 
-function handleError(promise: any, controller: any, method: string) {
+function handleError(promise: any, object: any, method: string) {
   if (!(promise instanceof Promise)) {
-    throw new Error(`Controller ${controller.name}.${method} must be async or return a Promise`)
+    throw new Error(`Controller ${object}.${method} must be async or return a Promise`)
   }
   return promise.catch((error) => {
-    console.error(`Error in ${method} for controller ${controller.name}: ${error.message}`)
+    console.error(`Error in ${method} for target ${object}: ${error.message}`)
   })
 }
 
