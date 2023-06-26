@@ -59,7 +59,7 @@ function handleError(promise: any, controller: any, method: string) {
 
 
 
-export function Routed(arg?: Array<string | RegExp>):Function {
+export function Routable(arg?: Array<string | RegExp>):Function {
   return function (ctor: any) {
     const config = getRegisteredClass(ctor.prototype)
     config.activeRoutes.push(...(arg || []))
