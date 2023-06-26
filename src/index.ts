@@ -82,7 +82,7 @@ export function RouteActivated(target: any, propertyKey: string, descriptor: Pro
   config!.activate = (target as any)[propertyKey]
 }
 
-export function RouteDectivated(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function RouteDeactivated(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
   const config = getRegisteredClass(target)
   config!.deactivate = (target as any)[propertyKey]
 }
