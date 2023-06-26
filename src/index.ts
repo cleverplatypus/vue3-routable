@@ -105,11 +105,11 @@ export async function handleRouteChange(from: Route, to: Route) {
       return
     }
     if (to.name === from.name && config.update) {
-      promises.push(handleError(config.update.call(routable, to, from), key.name, 'update'))
+      promises.push(handleError(config.update.call(routable, to, from), key.constructor.name, 'update'))
     } else if (config.activate && matchesRoute(config!, to)) {
-      promises.push(handleError(config.activate.call(routable, to, from), key.name, 'activate'))
+      promises.push(handleError(config.activate.call(routable, to, from), key.constructor.name, 'activate'))
     } else if (config.deactivate) {
-      promises.push(handleError(config.deactivate.call(routable, to, from), key.name, 'deactivate'))
+      promises.push(handleError(config.deactivate.call(routable, to, from), key.constructor.name, 'deactivate'))
     }
   })
   await Promise.all(promises)
