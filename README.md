@@ -3,7 +3,7 @@
 ## TL;DR 
 You don't want to use VueX or Pinia? I hear ya! Use plain TypeScript decorated MVC controllers.
 
-This is a simple set of decorators that work in conjuction with [vue-router](https://router.vuejs.org/) to initalise and detach objects that take care of your models, local or global, doesn't matter.
+This is a simple set of decorators that work in conjuction with [vue-router](https://router.vuejs.org/) to initialise and detach objects that take care of your models, local or global, doesn't matter.
 
 Requires TypeScript. Duh! [For now...](https://github.com/tc39/proposal-decorators) 
 
@@ -110,7 +110,7 @@ If your Vue3 project is properly configured to work with TypeScript, the magic i
 Your controllers will be activated, deactivated and updated based on the route matching rules
 
 ## Rules matching
-There are two ways for the registered classes to be registered to respond to route changes:
+There are two ways for the registered classes to respond to route changes:
 - Via the `@Routable` parameter (`Array<string|RegExp>`)
 - Via a `@RouteMatcher` annotated method (`(route:RouteLocation) => boolean`)
 
