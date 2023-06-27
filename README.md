@@ -30,7 +30,14 @@ import {Routable, RouteActivated, RouteDeactivated, RouteMatcher} from 'vue3-rou
 import {RouteLocation} from 'vue-router';
 import {default as model, resetModel} from '@/models/products-list'
 import {watch} from 'vue';
-@Routable([ /^products-list/]) //this class will be registered to receive route change updates for any route whose meta.pathName (see below) starts with 'products-list'. This parameter is optional. 
+
+@Routable([ /^products-list/]) 
+/**
+ * this class will be registered to receive route 
+ * change updates for any route whose meta.pathName
+ * (see below) starts with 'products-list'. 
+ * The parameter is optional. 
+ */
 export class ProductsListScreenController {
     watchers = new Set();
     /**
@@ -59,7 +66,7 @@ export class ProductsListScreenController {
     }
 
     @RouteDeactivated
-    dispose() {
+    async dispose() {
         if(/^products-list/.test(to.meta.pathName)) {
             //don't cleanup if navigating to a sub-route that is supposed to use the same controller
             return;   
@@ -71,7 +78,7 @@ export class ProductsListScreenController {
     }
 
     @RouteUpdated
-    updateProducts(to) {
+    async updateProducts(to) {
         //parameters changed for this route so... update it
         this.loadProducts(to.query.searchString)
     }
@@ -116,31 +123,41 @@ There are two ways for the registered classes to respond to route changes:
 
 You can use both methods and the current route will be matched in an OR fashion, i.e. if any of the criteria is met.
 
+## `meta.pathName`
+The module will add the `meta.pathName` property to your routes. Its value will be a concatenation of `route.name` with it's children's `route.name`.
+
+So, for instance, for a product editor's (`name : 'product-editor-screen'`) nested route for editing the product image (`name : 'product-image-editor'`), you'll have `meta.pathName : 'product-editor-screen.product-image-editor`. 
+
+The `meta.pathName` property is used to match against the `@Routable` arguments.
+
 <hr>
 <br><br>
 
 ## Rant space
 ```
-Disclamer: my opinion based on experience. Love Pinia? More power to you. Wrote VueX? Respect. Think I'm talking nonsense? Possible. Peace.
+Disclamer: opinion based on my experience. Love Pinia? More power to you. Wrote VueX? Respect. Think I'm talking nonsense? Possible. Peace.
 ```
 
-> Fair models possess data, controllers command,
-And by their touch, the models' form is changed.
-Views, displaying data, do receive
-The UI events from users, I believe.
-What's neater than this wondrous interplay,
-Wherein the realm of technology holds sway? - Some William S.
+> Fair models possess data, controllers command,<br>
+And by their touch, the models' form is changed.<br>
+Views, displaying data, do receive<br>
+The UI events from users, I believe.<br>
+What's neater than this wondrous interplay,<br>
+Wherein the realm of technology holds sway?<br><br>
+Some William Guy
 
 
 I wrote this module because I'm a big fan of simplicity. And I love the benefits of an IoC ([Inversion of Control](https://medium.com/@amitkma/understanding-inversion-of-control-ioc-principle-163b1dc97454)) approach, reminiscent of my Java/ActionScript Spring days.
 
 I think that boilerplate code and artificial constructs that depart too much from the nature of the programming language and the toolset at hand, for the sake of representing some generally laudable design pattern, are more likely to hinder programmers' productivity rather than making their life easier by virtue of solving the issues that the design pattern is meant to solve (well that was a mouthful, so much for simplicity 😆).
 
-When it's "too much" is a matter of opinion, of course. You'll draw that line, of course.
+When it's "too much" is a matter of opinion, of course. You'll draw that line.
 
 ### Branching out trains of though
 
-I think that what happened with VueX and Pinia is that prior to v2.6, Vue basically had their model bound to the view, which made sharing state quite challenging. In fact, the only way to share state was passing props down the view chain. That's not strictly true because one could create discrete reactive objects instanciating a separate Vue object, but yeah, it wasn't ideal. So, the wondeful creativity of geeks like us came out with a solution (VueX) and (why not?) they featured a state machine (predictability is bliss), the [Immutability Pattern](https://en.wikipedia.org/wiki/Immutable_object) and, possibly [SSOT](https://en.wikipedia.org/wiki/Single_source_of_truth).
+I think that what happened with VueX and Pinia is that prior to v2.6, Vue basically had their model bound to the view, which made sharing state quite challenging. In fact, the only way to share state was passing props down the view chain. That's not strictly true because one could create discrete reactive objects instanciating a separate Vue object, but yeah, it wasn't ideal. 
+
+So, the wondeful creativity of geeks like us came out with a solution (VueX) and (why not?) they featured a state machine (predictability is bliss), the [Immutability Pattern](https://en.wikipedia.org/wiki/Immutable_object) and, possibly [SSOT](https://en.wikipedia.org/wiki/Single_source_of_truth).
 
 Now it's all very well. We humans observe and inherit patterns that make our lives easier (mostly). But patterns can become memes (in the Dawkins' sense) and propagate without necessarily involving much critical thinking.
 
@@ -158,10 +175,10 @@ Getting to my point here. Appliying basic MVC principles and using that great an
 
 The success of a final product comes from dedication, experience and craft. No tool can do the job for you. Well until ChatGPT becomes a little sharper.
 
-Any counter-rant, feel free to insult me ad-libitum on [Discord](https://discord.gg/QH9ymrvC) 🤘 
-
 
 ## Test coverage
 Still trying to find a good testing strategy. Stay tuned.
 
 
+## Feedback
+Any counter-rant, suggestions, insults, feel free to contact me on [Discord](https://discord.gg/QH9ymrvC) 🤘 
