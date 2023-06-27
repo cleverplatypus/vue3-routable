@@ -1,13 +1,13 @@
-import { Router, Route } from 'vue-router'
+import { Router, RouteLocation } from 'vue-router'
 
 
-type RouteResolver = (route: Route) => boolean
+type RouteResolver = (route: RouteLocation) => boolean
 
 type RoutableConfig = {
   activeRoutes: Array<string | RegExp | RouteResolver>
-  activate?: (to: Route, from: Route) => Promise<any>
-  deactivate?: (to: Route, from: Route) => Promise<any>
-  update?: (to: Route, from: Route) => Promise<any>
+  activate?: (to: RouteLocation, from: RouteLocation) => Promise<any>
+  deactivate?: (to: RouteLocation, from: RouteLocation) => Promise<any>
+  update?: (to: RouteLocation, from: RouteLocation) => Promise<any>
 }
 
 const registeredClasses: Map<any, RoutableConfig> = new Map()
@@ -23,18 +23,22 @@ function registerRoutableObject(object: Object) {
   routeableObjects.add(object)
 }
 
-function setRoutesMetadata(flatTree: Array<Route>, parentPath = '') {
-  flatTree.forEach((node) => {
+function setRoutesMetadata(root:Array<RouteLocation>, routes: Array<RouteLocation>, parentPath = '') {
+  routes.forEach((node) => {
     const pathName = parentPath ? `${parentPath}.${node.name}` : node.name
+    node.meta = node.meta || {};
     node.meta.pathName = pathName;
+    const rootNode = root.find(r => r.name === node.name)
+    rootNode.meta = rootNode.meta || {};
+    rootNode.meta.pathName = pathName;
 
-    if (node.children && node.children.length > 0) {
-      setRoutesMetadata(node.children, pathName)
+    if (node.children?.length) {
+      setRoutesMetadata(root, node.children, pathName)
     }
   })
 }
 
-function matchesRoute(config: RoutableConfig, route: Route) {
+function matchesRoute(config: RoutableConfig, route: RouteLocation) {
   if (Array.isArray(config.activeRoutes)) {
     return !!config.activeRoutes.find((exp) => {
       if (exp instanceof RegExp) {
@@ -93,7 +97,7 @@ export function RouteUpdated(target: any, propertyKey: string, descriptor: Prope
 }
 
 
-export async function handleRouteChange(from: Route, to: Route) {
+export async function handleRouteChange(from: RouteLocation, to: RouteLocation) {
   const promises: Array<Promise<any>> = []
   Array.from(routeableObjects).forEach((routable) => {
     const key = Object.getPrototypeOf(Object.getPrototypeOf(routable))
@@ -116,7 +120,8 @@ export async function handleRouteChange(from: Route, to: Route) {
 }
 
 export function registerRouter(router: Router): Router {
-  setRoutesMetadata(router.getRoutes())
+  const routes = router.getRoutes();
+  setRoutesMetadata(routes, routes)
   return router
 }
 
