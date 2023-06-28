@@ -96,6 +96,7 @@ export class ProductsListScreenController {
     async refuseLeaveIfUnsavedData() : RouteRecordRaw | boolean {
         if(model.hasUnsavedData) {
             alert('Please save or discard the changes before leaving');
+            return;
         }
         return true;
     }
@@ -148,7 +149,7 @@ So, for instance, for a product editor's (`name : 'product-editor-screen'`) nest
 The `meta.pathName` property is used to match against the `@Routable` arguments.
 
 ## Route handlers
-**Important**: methods annotated with the `@RouteActivated`, `@RouteDeactivated` and `@RouteUpdated` must by either declared `async` or return a `Promise` or the app will fail at class-registration time.
+**Important**: methods annotated with the `@RouteActivated`, `@RouteDeactivated`. `@RouteUpdated`, `GuardRouteEnter` and `GuardRouteLeave` must by either declared `async` or return a `Promise` or the app will fail at class-registration time.
 <br><br>
 <hr>
 <br><br>
