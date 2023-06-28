@@ -30,6 +30,7 @@ import {Routable, RouteActivated, RouteDeactivated, RouteMatcher} from 'vue3-rou
 import {RouteLocation} from 'vue-router';
 import {default as model, resetModel} from '@/models/products-list'
 import {watch} from 'vue';
+import {ROUTE} from '@/constants';
 
 @Routable([ /^products-list/]) 
 /**
@@ -39,7 +40,7 @@ import {watch} from 'vue';
  * The parameter is optional. 
  */
 export class ProductsListScreenController {
-    watchers = new Set();
+   #watchers = new Set<Function>();
     /**
      * Another way to register for routes events
      */
@@ -72,7 +73,7 @@ export class ProductsListScreenController {
             return;   
         }
         //dispose of the watchers
-        for(const unwatch of watchers.values()) {
+        for(const unwatch of this.watchers.values()) {
             unwatch();
         }
     }
@@ -81,6 +82,22 @@ export class ProductsListScreenController {
     async updateProducts(to) {
         //parameters changed for this route so... update it
         this.loadProducts(to.query.searchString)
+    }
+
+    @GuardRouteEnter
+    async refuseEnterIfNotAuthenticated() : RouteRecordRaw | boolean {
+        if(!sessionController.userIsAuthenticated()) {
+            return ROUTE.LOGIN
+        }
+        return true;
+    }
+
+    @GuardRouteLeave
+    async refuseLeaveIfUnsavedData() : RouteRecordRaw | boolean {
+        if(model.hasUnsavedData) {
+            alert('Please save or discard the changes before leaving');
+        }
+        return true;
     }
 }
 
@@ -119,7 +136,7 @@ Your controllers will be activated, deactivated and updated based on the route m
 ## Rules matching
 There are two ways for the registered classes to respond to route changes:
 - Via the `@Routable` parameter (`Array<string|RegExp>`)
-- Via a `@RouteMatcher` annotated method (`(route:RouteLocation) => boolean`)
+- Via a `@RouteMatcher` annotated method (` (route:RouteLocation) => boolean`)
 
 You can use both methods and the current route will be matched in an OR fashion, i.e. if any of the criteria is met.
 
@@ -130,13 +147,18 @@ So, for instance, for a product editor's (`name : 'product-editor-screen'`) nest
 
 The `meta.pathName` property is used to match against the `@Routable` arguments.
 
+## Route handlers
+**Important**: methods annotated with the `@RouteActivated`, `@RouteDeactivated` and `@RouteUpdated` must by either declared `async` or return a `Promise` or the app will fail at class-registration time.
+<br><br>
 <hr>
 <br><br>
 
 ## Rant space
-```
-Disclamer: opinion based on my experience. Love Pinia? More power to you. Wrote VueX? Respect. Think I'm talking nonsense? Possible. Peace.
-```
+
+**Disclamer**: opinion based on my experience.<br>
+Love Pinia? More power to you. Wrote VueX? Respect.<br>
+Think I'm talking nonsense? Possible. Peace.<br><br>
+
 
 > Fair models possess data, controllers command,<br>
 And by their touch, the models' form is changed.<br>
@@ -173,7 +195,7 @@ Pinia is undoubtedly a better VueX. But do we really need VueX in the first plac
 
 Getting to my point here. Appliying basic MVC principles and using that great and straightforward tool that Vue is, doesn't mean unsustainable development or other disasters.
 
-The success of a final product comes from dedication, experience and craft. No tool can do the job for you. Well until ChatGPT becomes a little sharper.
+The success of a final product comes from dedication, experience and craft. No tool can do the job for you. Well, until ChatGPT becomes a little sharper.
 
 
 ## Test coverage

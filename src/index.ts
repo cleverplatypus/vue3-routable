@@ -1,131 +1,144 @@
-import { Router, RouteLocation } from 'vue-router'
+import {
+  Router,
+  RouteLocation,
+  RouteLocationNormalized,
+  RouteRecordNormalized,
+  RouteRecordRaw,
+} from 'vue-router';
+import {
+  getRegisteredClass,
+  registeredClasses,
+  registerRoutableObject,
+  routeableObjects,
+} from './registry';
+import { GuardConfig, RoutableConfig } from './types';
 
-
-type RouteResolver = (route: RouteLocation) => boolean
-
-type RoutableConfig = {
-  activeRoutes: Array<string | RegExp | RouteResolver>
-  activate?: (to: RouteLocation, from: RouteLocation) => Promise<any>
-  deactivate?: (to: RouteLocation, from: RouteLocation) => Promise<any>
-  update?: (to: RouteLocation, from: RouteLocation) => Promise<any>
-}
-
-const registeredClasses: Map<any, RoutableConfig> = new Map()
-const routeableObjects = new Set<Object>()
-function getRegisteredClass(key: any): RoutableConfig {
-  if (!registeredClasses.has(key)) {
-    registeredClasses.set(key, { activeRoutes: [] })
-  }
-  return registeredClasses.get(key)!
-}
-
-function registerRoutableObject(object: Object) {
-  routeableObjects.add(object)
-}
-
-function setRoutesMetadata(root:Array<RouteLocation>, routes: Array<RouteLocation>, parentPath = '') {
+function setRoutesMetadata(
+  root: Array<RouteRecordNormalized>,
+  routes: Array<RouteRecordNormalized>,
+  parentPath = ''
+) {
   routes.forEach((node) => {
-    const pathName = parentPath ? `${parentPath}.${node.name}` : node.name
+    const pathName = parentPath
+      ? `${parentPath}.${String(node.name)}`
+      : node.name;
     node.meta = node.meta || {};
     node.meta.pathName = pathName;
-    const rootNode = root.find(r => r.name === node.name)
+    const rootNode = root.find((r) => r.name === node.name);
     rootNode.meta = rootNode.meta || {};
     rootNode.meta.pathName = pathName;
 
     if (node.children?.length) {
-      setRoutesMetadata(root, node.children, pathName)
+      setRoutesMetadata(
+        root,
+        node.children as Array<RouteRecordNormalized>,
+        pathName
+      );
     }
-  })
+  });
 }
 
 function matchesRoute(config: RoutableConfig, route: RouteLocation) {
   if (Array.isArray(config.activeRoutes)) {
     return !!config.activeRoutes.find((exp) => {
       if (exp instanceof RegExp) {
-        return exp.test(route.meta?.pathName)
+        return exp.test(route.meta?.pathName as string);
       } else if (typeof exp === 'string') {
-        return exp === route.meta?.pathName
+        return exp === route.meta?.pathName;
       } else {
-        return exp(route)
+        return exp(route);
       }
-    })
+    });
   }
 }
 
 function handleError(promise: any, object: any, method: string) {
   if (!(promise instanceof Promise)) {
-    throw new Error(`Controller ${object}.${method} must be async or return a Promise`)
+    throw new Error(
+      `Controller ${object}.${method} must be async or return a Promise`
+    );
   }
   return promise.catch((error) => {
-    console.error(`Error in ${method} for target ${object}: ${error.message}`)
-  })
+    console.error(`Error in ${method} for target ${object}: ${error.message}`);
+  });
 }
 
+async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
+  const promises: Array<() => Promise<any>> = [];
+  const guards: Array<{
+    guard: GuardConfig;
+    to: RouteLocation;
+    from: RouteLocation;
+  }> = [];
 
-
-export function Routable(arg?: Array<string | RegExp>):Function {
-  return function (ctor: any) {
-    const config = getRegisteredClass(ctor.prototype)
-    config.activeRoutes.push(...(arg || []))
-    return class extends ctor {
-      constructor(...args: [any]) {
-        super(...args)
-        registerRoutableObject(this)
+  Array.from(routeableObjects).forEach((routable) => {
+    const key = Object.getPrototypeOf(Object.getPrototypeOf(routable));
+    const config = getRegisteredClass(key);
+    if (!config) {
+      return;
+    }
+    const matchesTo = matchesRoute(config!, to);
+    const matchesFrom = matchesRoute(config!, from);
+    if (!matchesTo && !matchesFrom) {
+      return;
+    }
+    if (to.name === from.name) {
+      if (config.update)
+        promises.push(() =>
+          handleError(
+            config.update.call(routable, to, from),
+            key.constructor.name,
+            'update'
+          )
+        );
+    } else {
+      if (config.guardEnter && matchesTo) {
+        guards.push({ guard: config.guardEnter, to, from });
+      }
+      if (config.guardLeave && matchesFrom) {
+        guards.push({ guard: config.guardLeave, to, from });
+      }
+      if (config.activate && matchesTo) {
+        promises.push(() =>
+          handleError(
+            config.activate.call(routable, to, from),
+            key.constructor.name,
+            'activate'
+          )
+        );
+      } else if (config.deactivate) {
+        promises.push(() =>
+          handleError(
+            config.deactivate.call(routable, to, from),
+            key.constructor.name,
+            'deactivate'
+          )
+        );
       }
     }
+  });
+  guards.sort(
+    ({ guard: a }, { guard: b }) => Number(b.priority) - Number(a.priority)
+  );
+  let guardOutcome: boolean | RouteRecordRaw;
+  for (const config of guards) {
+    guardOutcome = await config.guard.handler(to, from);
+    if (guardOutcome !== true) {
+      return guardOutcome;
+    }
   }
-}
-
-export function RouteMatcher(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const config = getRegisteredClass(target)
-  config!.activeRoutes.push((target as any)[propertyKey])
-}
-
-export function RouteActivated(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const config = getRegisteredClass(target)
-  config!.activate = (target as any)[propertyKey]
-}
-
-export function RouteDeactivated(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const config = getRegisteredClass(target)
-  config!.deactivate = (target as any)[propertyKey]
-}
-
-export function RouteUpdated(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const config = getRegisteredClass(target)
-  config!.update = (target as any)[propertyKey]
-}
-
-
-export async function handleRouteChange(from: RouteLocation, to: RouteLocation) {
-  const promises: Array<Promise<any>> = []
-  Array.from(routeableObjects).forEach((routable) => {
-    const key = Object.getPrototypeOf(Object.getPrototypeOf(routable))
-    const config = registeredClasses.get(key)
-    if (!config) {
-      return
-    }
-    if (!matchesRoute(config!, to) && !matchesRoute(config!, from)) {
-      return
-    }
-    if (to.name === from.name && config.update) {
-      promises.push(handleError(config.update.call(routable, to, from), key.constructor.name, 'update'))
-    } else if (config.activate && matchesRoute(config!, to)) {
-      promises.push(handleError(config.activate.call(routable, to, from), key.constructor.name, 'activate'))
-    } else if (config.deactivate) {
-      promises.push(handleError(config.deactivate.call(routable, to, from), key.constructor.name, 'deactivate'))
-    }
-  })
-  await Promise.all(promises)
+  await Promise.all(promises.map((p) => p()));
 }
 
 export function registerRouter(router: Router): Router {
   const routes = router.getRoutes();
-  setRoutesMetadata(routes, routes)
-  return router
+  setRoutesMetadata(routes, routes);
+  router.beforeEach(handleRouteChange);
+  return router;
 }
 
-export function registerRoutableClasses(...classes:Array<any>) {
-  for(const clazz of classes)
-    clazz.prototype; //just poke the class in order to be loaded
+export function registerRoutableClasses(...classes: Array<any>) {
+  for (const clazz of classes) clazz.prototype; //just poke the class in order to be loaded
 }
+
+export * from './decorators';
