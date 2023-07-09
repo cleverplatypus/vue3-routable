@@ -4,14 +4,44 @@ import {
   RouteLocationNormalized,
   RouteRecordNormalized,
   RouteRecordRaw,
+  RouteLocationNamedRaw,
+  RouteLocationPathRaw,
 } from 'vue-router';
 import {
   getRegisteredClass,
   registeredClasses,
   registerRoutableObject,
   routeableObjects,
-} from './registry';
-import { GuardConfig, RoutableConfig } from './types';
+} from './registry.ts';
+import {
+  GuardConfig,
+  RoutableConfig,
+  RouteChangeHandler,
+  RouteChangeHandlerConfig,
+} from './types.ts';
+
+function checkRouteHandlerReturnValue(val:any, clazz:string) {
+  const throwError = () => {
+    throw new Error(`Router handler in ${clazz} function's return value must be 
+    Promise<undefined|boolean|RouteLocationNamedRaw|RouteLocationPathRaw>. Was \`${val}\` instead`)
+  }
+  if(val === undefined) {
+    return true
+  }
+  if (val === null) {
+    throwError();
+  }
+  
+  if (typeof val === 'boolean') {
+    return val;
+  }
+
+  if (typeof val === 'object' && (val.hasOwnProperty('name') || val.hasOwnProperty('path'))) {
+    return val;
+  }
+
+  throwError();
+}
 
 function setRoutesMetadata(
   root: Array<RouteRecordNormalized>,
@@ -20,11 +50,11 @@ function setRoutesMetadata(
 ) {
   routes.forEach((node) => {
     const pathName = parentPath
-      ? `${parentPath}.${String(node.name)}`
-      : node.name;
+      ? `${parentPath}.${String(node.name!.toString())}`
+      : node.name!.toString();
     node.meta = node.meta || {};
     node.meta.pathName = pathName;
-    const rootNode = root.find((r) => r.name === node.name);
+    const rootNode = root.find((r) => r.name === node.name)!;
     rootNode.meta = rootNode.meta || {};
     rootNode.meta.pathName = pathName;
 
@@ -63,13 +93,22 @@ function handleError(promise: any, object: any, method: string) {
   });
 }
 
+function deepFreeze(object: any) {
+  const propNames = Object.getOwnPropertyNames(object);
+
+  for (let name of propNames) {
+    let value = object[name];
+
+    object[name] =
+      value && typeof value === 'object' ? deepFreeze(value) : value;
+  }
+
+  return Object.freeze(object);
+}
+
 async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
-  const promises: Array<() => Promise<any>> = [];
-  const guards: Array<{
-    guard: GuardConfig;
-    to: RouteLocation;
-    from: RouteLocation;
-  }> = [];
+  const guards: Array<{config : GuardConfig, class : string}> = [];
+  const handlers: Array<{config : RouteChangeHandlerConfig, class  : string}> = [];
 
   Array.from(routeableObjects).forEach((routable) => {
     const key = Object.getPrototypeOf(Object.getPrototypeOf(routable));
@@ -83,51 +122,40 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
       return;
     }
     if (to.name === from.name) {
-      if (config.update)
-        promises.push(() =>
-          handleError(
-            config.update.call(routable, to, from),
-            key.constructor.name,
-            'update'
-          )
-        );
+      if (config.update) handlers.push({config : config.update, class: config.class!});
     } else {
       if (config.guardEnter && matchesTo) {
-        guards.push({ guard: config.guardEnter, to, from });
+        guards.push({config:config.guardEnter, class : config.class!});
       }
       if (config.guardLeave && matchesFrom) {
-        guards.push({ guard: config.guardLeave, to, from });
+        guards.push({config:config.guardLeave, class : config.class!});
       }
       if (config.activate && matchesTo) {
-        promises.push(() =>
-          handleError(
-            config.activate.call(routable, to, from),
-            key.constructor.name,
-            'activate'
-          )
-        );
+        handlers.push({config:config.activate, class : config.class!});
       } else if (config.deactivate) {
-        promises.push(() =>
-          handleError(
-            config.deactivate.call(routable, to, from),
-            key.constructor.name,
-            'deactivate'
-          )
-        );
+        handlers.push({config:config.deactivate, class : config.class!});
       }
     }
   });
-  guards.sort(
-    ({ guard: a }, { guard: b }) => Number(b.priority) - Number(a.priority)
-  );
-  let guardOutcome: boolean | RouteRecordRaw;
-  for (const config of guards) {
-    guardOutcome = await config.guard.handler(to, from);
-    if (guardOutcome !== true) {
-      return guardOutcome;
+  guards.sort((a, b) => Number(b.config.priority) - Number(a.config.priority));
+  handlers.sort((a, b) => Number(b.config.priority) - Number(a.config.priority));
+  let outcome: boolean | RouteRecordRaw = true;
+  
+  for (const guard of guards) {
+    outcome = checkRouteHandlerReturnValue(await guard.config.handler(to, from), guard.class);
+    if (outcome !== true) {
+      return outcome;
     }
   }
-  await Promise.all(promises.map((p) => p()));
+  if (outcome === true) {
+    for (const handler of handlers) {
+      outcome = checkRouteHandlerReturnValue(await handler.config.handler(to, from), handler.class);
+      if (outcome !== true) {
+        return outcome;
+      }
+    }
+  }
+ return true;
 }
 
 export function registerRouter(router: Router): Router {
@@ -141,4 +169,4 @@ export function registerRoutableClasses(...classes: Array<any>) {
   for (const clazz of classes) clazz.prototype; //just poke the class in order to be loaded
 }
 
-export * from './decorators';
+export * from './decorators.ts';

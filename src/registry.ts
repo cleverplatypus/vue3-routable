@@ -1,4 +1,4 @@
-import { RoutableConfig } from './types';
+import { RoutableConfig } from './types.ts';
 
 
 export const registeredClasses: Map<any, RoutableConfig> = new Map()
