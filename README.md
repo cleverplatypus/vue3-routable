@@ -49,7 +49,7 @@ export class ProductsListScreenController {
         return !route.params.someReasonNotToGetInvolved;
     }
 
-    @RouteActivated
+    @RouteActivated({priority : 10})
     async init(to:RouteLocation, from:RouteLocation) {
         if(/^products-list/.test(from.meta.pathName)) {
             //don't init the controller if navigating to a sub-route that is supposed to use the same controller
@@ -66,7 +66,7 @@ export class ProductsListScreenController {
             });
     }
 
-    @RouteDeactivated
+    @RouteDeactivated()
     async dispose() {
         if(/^products-list/.test(to.meta.pathName)) {
             //don't cleanup if navigating to a sub-route that is supposed to use the same controller
@@ -78,13 +78,13 @@ export class ProductsListScreenController {
         }
     }
 
-    @RouteUpdated
+    @RouteUpdated()
     async updateProducts(to) {
         //parameters changed for this route so... update it
         this.loadProducts(to.query.searchString)
     }
 
-    @GuardRouteEnter
+    @GuardRouteEnter()
     async refuseEnterIfNotAuthenticated() : RouteRecordRaw | boolean {
         if(!sessionController.userIsAuthenticated()) {
             return ROUTE.LOGIN
@@ -92,7 +92,7 @@ export class ProductsListScreenController {
         return true;
     }
 
-    @GuardRouteLeave
+    @GuardRouteLeave()
     async refuseLeaveIfUnsavedData() : RouteRecordRaw | boolean {
         if(model.hasUnsavedData) {
             alert('Please save or discard the changes before leaving');
