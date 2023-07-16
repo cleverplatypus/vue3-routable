@@ -1,5 +1,7 @@
 # Vue3 Routable
 
+https://github.com/cleverplatypus/vue3-routable/actions/workflows/test.yml/badge.svg
+
 ## TL;DR 
 You don't want to use VueX or Pinia? I hear ya! Use plain TypeScript decorated MVC controllers.
 
