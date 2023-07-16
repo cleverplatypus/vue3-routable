@@ -93,18 +93,6 @@ function handleError(promise: any, object: any, method: string) {
   });
 }
 
-function deepFreeze(object: any) {
-  const propNames = Object.getOwnPropertyNames(object);
-
-  for (let name of propNames) {
-    let value = object[name];
-
-    object[name] =
-      value && typeof value === 'object' ? deepFreeze(value) : value;
-  }
-
-  return Object.freeze(object);
-}
 
 async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
   const guards: Array<{config : GuardConfig, class : string}> = [];

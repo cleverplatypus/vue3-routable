@@ -3,6 +3,7 @@
   
   "compilerOptions": {
     "allowImportingTsExtensions" : true,
+    "noEmit": true,
     "experimentalDecorators": true,
     "target": "es2015",
     // this enables stricter inference for data properties on `this`
