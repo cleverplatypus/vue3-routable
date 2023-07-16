@@ -7,7 +7,8 @@ You don't want to use VueX or Pinia? I hear ya! Use plain TypeScript decorated M
 
 This is a simple set of decorators that work in conjuction with [vue-router](https://router.vuejs.org/) to initialise and detach objects that take care of your models, local or global, doesn't matter.
 
-Requires TypeScript. Duh! [For now...](https://github.com/tc39/proposal-decorators) 
+Requires TypeScript. Duh! [For now...](https://github.com/tc39/proposal-decorators).  
+
 
 ## Step 1
 Install vue3-routable
@@ -19,6 +20,16 @@ or
 npm install vue3-routable
 ```
 
+You might have to add this to your `tsconfig.json`
+```json
+{ 
+    "compilerOptions" : {
+        "experimentalDecorators": true
+    }
+}
+```
+
+
 ## Step 2
 Annotate your controllers.
 
@@ -28,19 +39,20 @@ We want to make sure that the model is in the correct state depending on the rou
 
 > It doesn't matter what the annotated method's names are. 
 ```ts
+// @/controllers/products-list-controller.ts
+
 import {Routable, RouteActivated, RouteDeactivated, RouteMatcher} from 'vue3-routable';
 import {RouteLocation} from 'vue-router';
 import {default as model, resetModel} from '@/models/products-list'
 import {watch} from 'vue';
-import {ROUTE} from '@/constants';
 
-@Routable([ /^products-list/]) 
 /**
  * this class will be registered to receive route 
  * change updates for any route whose meta.pathName
  * (see below) starts with 'products-list'. 
  * The parameter is optional. 
  */
+@Routable(/^products-list/) 
 export class ProductsListScreenController {
    #watchers = new Set<Function>();
     /**
@@ -69,7 +81,7 @@ export class ProductsListScreenController {
     }
 
     @RouteDeactivated()
-    async dispose() {
+    async cleanUp() {
         if(/^products-list/.test(to.meta.pathName)) {
             //don't cleanup if navigating to a sub-route that is supposed to use the same controller
             return;   
@@ -86,16 +98,8 @@ export class ProductsListScreenController {
         this.loadProducts(to.query.searchString)
     }
 
-    @GuardRouteEnter()
-    async refuseEnterIfNotAuthenticated() : RouteRecordRaw | boolean {
-        if(!sessionController.userIsAuthenticated()) {
-            return ROUTE.LOGIN
-        }
-        return true;
-    }
-
     @GuardRouteLeave()
-    async refuseLeaveIfUnsavedData() : RouteRecordRaw | boolean {
+    async refuseLeaveIfUnsavedData() {
         if(model.hasUnsavedData) {
             alert('Please save or discard the changes before leaving');
             return;
@@ -105,6 +109,35 @@ export class ProductsListScreenController {
 }
 
 export default new ProductsListScreenController();//good idea for it to be a singleton
+```
+
+```ts
+// @/controllers/session-controller
+
+@Routable(/.*/)
+export class SessionController {
+
+    @GuardRouteEnter({priority : 1000})
+    async checkRole(to:RouteLocation) {
+        if(to.meta.noAuthRequired) {
+            return
+        }
+        
+        if(!this.isUserAuthenticated()) {
+            return { name : 'sign-in' };
+        }
+
+        if(!this.getUserRoles().includes(to.meta.requiredRole)) {
+            return { name : 'home' };
+        }
+    }
+
+    //... session related methods
+
+}
+
+export default new SessionController();
+
 ```
 
 ### Step 3 - Minimal boilerplate code
@@ -123,11 +156,11 @@ registerRouter(router);
 //somewhere as early as @/main.ts
 import {registerRoutableClasses} from 'vue3-routable';
 import ProductsListScreenController from '@/controllers/products-list-screen-controller';
+import SessionController from '@/controllers/session-controller';
 
 registerRoutableClasses(
     ProductsListScreenController, 
-    ProductEditorController,
-    SomeOtherController);
+    SessionController);
 ```
 
 ## Done
@@ -138,8 +171,8 @@ Your controllers will be activated, deactivated and updated based on the route m
 
 ## Rules matching
 There are two ways for the registered classes to respond to route changes:
-- Via the `@Routable` parameter (`Array<string|RegExp>`)
-- Via a `@RouteMatcher` annotated method (` (route:RouteLocation) => boolean`)
+- Via the `@Routable` parameter (`string|RegExp|(route:RouteLocation) => boolean | Array<string|RegExp|(route:RouteLocation) => boolean>`)
+- Via a `@RouteMatcher` annotated method (`(route:RouteLocation) => boolean`)
 
 You can use both methods and the current route will be matched in an OR fashion, i.e. if any of the criteria is met.
 
@@ -153,57 +186,35 @@ The `meta.pathName` property is used to match against the `@Routable` arguments.
 ## Route handlers
 **Important**: methods annotated with the `@RouteActivated`, `@RouteDeactivated`. `@RouteUpdated`, `GuardRouteEnter` and `GuardRouteLeave` must by either declared `async` or return a `Promise` or the app will fail at class-registration time.
 <br><br>
-<hr>
-<br><br>
 
-## Rant space
 
-**Disclamer**: opinion based on my experience.<br>
+## Motivation benind this module
+
+> **Disclamer**: opinion based on my experience.<br>
 Love Pinia? More power to you. Wrote VueX? Respect.<br>
 Think I'm talking nonsense? Possible. Peace.<br><br>
 
+I wrote this module because I'm a big fan of Vue's simplicity and of simplicity in general. And I love the IoC ([Inversion of Control](https://medium.com/@amitkma/understanding-inversion-of-control-ioc-principle-163b1dc97454)) approach, reminiscent of my Java/ActionScript Spring days.
 
-> Fair models possess data, controllers command,<br>
-And by their touch, the models' form is changed.<br>
-Views, displaying data, do receive<br>
-The UI events from users, I believe.<br>
-What's neater than this wondrous interplay,<br>
-Wherein the realm of technology holds sway?<br><br>
-Some William Guy
-
-
-I wrote this module because I'm a big fan of simplicity. And I love the benefits of an IoC ([Inversion of Control](https://medium.com/@amitkma/understanding-inversion-of-control-ioc-principle-163b1dc97454)) approach, reminiscent of my Java/ActionScript Spring days.
-
-I think that boilerplate code and artificial constructs that depart too much from the nature of the programming language and the toolset at hand, for the sake of representing some generally laudable design pattern, are more likely to hinder programmers' productivity rather than making their life easier by virtue of solving the issues that the design pattern is meant to solve (well that was a mouthful, so much for simplicity 😆).
+I think that boilerplate code and artificial constructs that depart too much from the nature of the programming language and the toolset at hand, for the sake of representing some generally laudable design pattern, are more likely to hinder programmers' productivity rather than making their life easier by virtue of solving the issues that the design pattern is meant to solve.
 
 When it's "too much" is a matter of opinion, of course. You'll draw that line.
 
-### Branching out trains of though
+Reading through the documentation and motivation behind VueX and Pinia, it might seem like the only two available options when writing Vue apps were:
 
-I think that what happened with VueX and Pinia is that prior to v2.6, Vue basically had their model bound to the view, which made sharing state quite challenging. In fact, the only way to share state was passing props down the view chain. That's not strictly true because one could create discrete reactive objects instanciating a separate Vue object, but yeah, it wasn't ideal. 
+* having all the business logic in the vue components and having to deal with difficult passing down props
+* using VueX/Pinia stores 
 
-So, the wondeful creativity of geeks like us came out with a solution (VueX) and (why not?) they featured a state machine (predictability is bliss), the [Immutability Pattern](https://en.wikipedia.org/wiki/Immutable_object) and, possibly [SSOT](https://en.wikipedia.org/wiki/Single_source_of_truth).
+I don't think this is a correct assumption. Models can live and be referenced from outside view components since Vue v2.6 and the logic can be separated simply by applying general MVC principles. 
 
-Now it's all very well. We humans observe and inherit patterns that make our lives easier (mostly). But patterns can become memes (in the Dawkins' sense) and propagate without necessarily involving much critical thinking.
+Besides, from what I've seen in apps using VueX/Pinia out there, there is still too much code in view components and store files are a mix of data and behaviour.
 
-Vue, in the meantime evolved and, first with v2.6's `Vue.observable`, then with Vue3's [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html), the reactivity functionality was finally exposed for your peruse. Models could be defined in any component and managed outside of the View layer. 
-
-VueX could have been dismissed as a non necessary tool at that point. But of course, there is the sunk cost issue for the people who spent a lot of time honing it and the ones who invested their time in perfecting its usage. Fine.
-
-### Along came Pinia
-... which reminds me of that Henry Ford's quote
-> If I had asked people what they wanted, they would have said faster horses.
-
-Pinia is undoubtedly a better VueX. But do we really need VueX in the first place?
-
-Getting to my point here. Appliying basic MVC principles and using that great and straightforward tool that Vue is, doesn't mean unsustainable development or other disasters.
-
-The success of a final product comes from dedication, experience and craft. No tool can do the job for you. Well, until ChatGPT becomes a little sharper.
+Sure, there are quirks associated with using reactive objects directly, and, without the necessary understanding of how they work, one can end up with unexpected and hard to debug side effects. But hey, get to know your tools instead of dumping the issue on yet another tool, right?
 
 
 ## Test coverage
-Still trying to find a good testing strategy. Stay tuned.
+The current tests are based on a mock implementation of vue-router that mimicks the effects of route navigation on routable objects. That's to avoid having to rely on heavy virtual DOM libraries. 
 
 
 ## Feedback
-Any counter-rant, suggestions, insults, feel free to contact me on [Discord](https://discord.gg/QH9ymrvC) 🤘 
+Any counter-rant, suggestions, insults, feel free to contact me on [Discord](https://discord.gg/QH9ymrvC) ✌🏻
