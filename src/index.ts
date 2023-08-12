@@ -1,23 +1,17 @@
 import {
-  Router,
   RouteLocation,
-  RouteLocationNormalized,
   RouteRecordNormalized,
   RouteRecordRaw,
-  RouteLocationNamedRaw,
-  RouteLocationPathRaw,
+  Router
 } from 'vue-router';
 import {
   getRegisteredClass,
-  registeredClasses,
-  registerRoutableObject,
-  routeableObjects,
+  routeableObjects
 } from './registry.ts';
 import {
   GuardConfig,
   RoutableConfig,
-  RouteChangeHandler,
-  RouteChangeHandlerConfig,
+  RouteChangeHandlerConfig
 } from './types.ts';
 
 function checkRouteHandlerReturnValue(val:any, clazz:string) {
@@ -95,11 +89,11 @@ function handleError(promise: any, object: any, method: string) {
 
 
 async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
-  const guards: Array<{config : GuardConfig, class : string}> = [];
-  const handlers: Array<{config : RouteChangeHandlerConfig, class  : string}> = [];
+  const guards: Array<{config : GuardConfig, class : string, target : any}> = [];
+  const handlers: Array<{config : RouteChangeHandlerConfig, class  : string, target : any}> = [];
 
   Array.from(routeableObjects).forEach((routable) => {
-    const key = Object.getPrototypeOf(Object.getPrototypeOf(routable));
+    const key = Object.getPrototypeOf(routable);
     const config = getRegisteredClass(key);
     if (!config) {
       return;
@@ -110,18 +104,18 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
       return;
     }
     if (to.name === from.name) {
-      if (config.update) handlers.push({config : config.update, class: config.class!});
+      if (config.update) handlers.push({config : config.update, class: config.class!, target : routable});
     } else {
       if (config.guardEnter && matchesTo) {
-        guards.push({config:config.guardEnter, class : config.class!});
+        guards.push({config:config.guardEnter, class : config.class!, target : routable});
       }
       if (config.guardLeave && matchesFrom) {
-        guards.push({config:config.guardLeave, class : config.class!});
+        guards.push({config:config.guardLeave, class : config.class!, target : routable});
       }
       if (config.activate && matchesTo) {
-        handlers.push({config:config.activate, class : config.class!});
+        handlers.push({config:config.activate, class : config.class!, target : routable});
       } else if (config.deactivate) {
-        handlers.push({config:config.deactivate, class : config.class!});
+        handlers.push({config:config.deactivate, class : config.class!, target : routable});
       }
     }
   });
@@ -130,14 +124,15 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
   let outcome: boolean | RouteRecordRaw = true;
   
   for (const guard of guards) {
-    outcome = checkRouteHandlerReturnValue(await guard.config.handler(to, from), guard.class);
+    outcome = checkRouteHandlerReturnValue(await guard.config.handler(guard.target, to, from), guard.class);
     if (outcome !== true) {
       return outcome;
     }
   }
   if (outcome === true) {
     for (const handler of handlers) {
-      outcome = checkRouteHandlerReturnValue(await handler.config.handler(to, from), handler.class);
+      console.log(handler.config.handler.name)
+      outcome = checkRouteHandlerReturnValue(await handler.config.handler(handler.target, to, from), handler.class);
       if (outcome !== true) {
         return outcome;
       }

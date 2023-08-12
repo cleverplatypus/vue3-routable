@@ -1,5 +1,5 @@
 import { getRegisteredClass, registerRoutableObject } from './registry.ts';
-import { RouteChangeHandler, RouteResolver } from './types.ts';
+import { RouteResolver } from './types.ts';
 
 type PlainDecoratorSignature = [
   target: any,
@@ -18,7 +18,9 @@ export function RouteMatcher(
   config!.activeRoutes.push((target as any)[propertyKey]);
 }
 
-export function RouteActivated(...args : PlainDecoratorSignature | RouteHandlerParams) {
+export function RouteActivated(
+  ...args: PlainDecoratorSignature | RouteHandlerParams
+) {
   if (args.length === 3)
     throw new Error(
       'RouteActivated decorator must be used with brachets: RouteActivated(config?)'
@@ -32,12 +34,14 @@ export function RouteActivated(...args : PlainDecoratorSignature | RouteHandlerP
     const config = getRegisteredClass(target);
     config!.activate = {
       priority,
-      handler: (target as any)[propertyKey].bind(target),
+      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
     };
   };
 }
 
-export function RouteDeactivated(...args : PlainDecoratorSignature | RouteHandlerParams) {
+export function RouteDeactivated(
+  ...args: PlainDecoratorSignature | RouteHandlerParams
+) {
   if (args.length === 3)
     throw new Error(
       'RouteDeactivated decorator must be used with brachets: RouteDeactivated(config?)'
@@ -51,12 +55,14 @@ export function RouteDeactivated(...args : PlainDecoratorSignature | RouteHandle
     const config = getRegisteredClass(target);
     config!.deactivate = {
       priority,
-      handler: (target as any)[propertyKey].bind(target),
+      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
     };
   };
 }
 
-export function RouteUpdated(...args : PlainDecoratorSignature | RouteHandlerParams) {
+export function RouteUpdated(
+  ...args: PlainDecoratorSignature | RouteHandlerParams
+) {
   if (args.length === 3)
     throw new Error(
       'RouteUpdated decorator must be used with brachets: RouteUpdated(config?)'
@@ -70,12 +76,14 @@ export function RouteUpdated(...args : PlainDecoratorSignature | RouteHandlerPar
     const config = getRegisteredClass(target);
     config!.update = {
       priority,
-      handler: (target as any)[propertyKey].bind(target),
+      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
     };
   };
 }
 
-export function GuardRouteEnter(...args : PlainDecoratorSignature | RouteHandlerParams) {
+export function GuardRouteEnter(
+  ...args: PlainDecoratorSignature | RouteHandlerParams
+) {
   if (args.length === 3)
     throw new Error(
       'GuardRouteEnter decorator must be used with brachets: GuardRouteEnter(config?)'
@@ -87,7 +95,10 @@ export function GuardRouteEnter(...args : PlainDecoratorSignature | RouteHandler
     descriptor: PropertyDescriptor
   ) {
     const config = getRegisteredClass(target);
-    config!.guardEnter = { priority, handler: (target as any)[propertyKey] };
+    config!.guardEnter = {
+      priority,
+      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
+    };
   };
 }
 
@@ -105,25 +116,33 @@ export function GuardRouteLeave(
     descriptor: PropertyDescriptor
   ) {
     const config = getRegisteredClass(target);
-    config!.guardLeave = { priority, handler: (target as any)[propertyKey] };
+    config!.guardLeave = {
+      priority,
+      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest)
+    };
   };
 }
 
 export function Routable(
   arg?: Array<string | RegExp> | string | RegExp | RouteResolver
 ): Function {
-  return function (ctor: any) {
-    const config = getRegisteredClass(ctor.prototype);
-    config.class = ctor.name;
+  return function (OriginalConstructor: any) {
+    const config = getRegisteredClass(OriginalConstructor.prototype);
+    config.class = OriginalConstructor.name;
+
     if (arg && (!Array.isArray(arg) || (arg as Array<any>).length)) {
       const all = Array.isArray(arg) ? arg : [arg];
       config.activeRoutes.push(...(all || []));
     }
-    return class extends ctor {
-      constructor(...args: [any]) {
-        super(...args);
-        registerRoutableObject(this);
-      }
-    };
+
+    function newConstructor(...args: any[]) {
+      const instance = new OriginalConstructor(...args);
+      registerRoutableObject(instance);
+      return instance;
+    }
+
+    // Set prototype to ensure instance methods and properties are preserved
+    newConstructor.prototype = OriginalConstructor.prototype;
+    return newConstructor;
   };
 }

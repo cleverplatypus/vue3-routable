@@ -12,6 +12,7 @@ export type GuardConfig = {
 };
 
 export type RouteChangeHandler = (
+  target : any,
   to?: RouteLocation,
   from?: RouteLocation
 ) => Promise<boolean | RouteRecordRaw>;
