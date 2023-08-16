@@ -1,5 +1,6 @@
-import { getRegisteredClass, registerRoutableObject } from './registry.ts';
-import { RouteResolver } from './types.ts';
+import { defineMetadata, getMetadata, getRegisteredClass, registerRoutableObject } from './registry.ts';
+import { FROM_METADATA, HANDLER_ARGS_METADATA, META_METADATA, PARAM_METADATA, QUERY_METADATA, TO_METADATA } from './symbols.ts';
+import type { RouteResolver } from './types.ts';
 
 type PlainDecoratorSignature = [
   target: any,
@@ -34,7 +35,7 @@ export function RouteActivated(
     const config = getRegisteredClass(target);
     config!.activate = {
       priority,
-      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
+      handler: propertyKey
     };
   };
 }
@@ -55,7 +56,7 @@ export function RouteDeactivated(
     const config = getRegisteredClass(target);
     config!.deactivate = {
       priority,
-      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
+      handler: propertyKey
     };
   };
 }
@@ -76,7 +77,7 @@ export function RouteUpdated(
     const config = getRegisteredClass(target);
     config!.update = {
       priority,
-      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
+      handler: propertyKey
     };
   };
 }
@@ -97,7 +98,7 @@ export function GuardRouteEnter(
     const config = getRegisteredClass(target);
     config!.guardEnter = {
       priority,
-      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest),
+      handler: propertyKey
     };
   };
 }
@@ -116,9 +117,10 @@ export function GuardRouteLeave(
     descriptor: PropertyDescriptor
   ) {
     const config = getRegisteredClass(target);
+
     config!.guardLeave = {
       priority,
-      handler: (targetInstance, ...rest) => (targetInstance as any)[propertyKey].call(targetInstance, ...rest)
+      handler: propertyKey
     };
   };
 }
@@ -145,4 +147,32 @@ export function Routable(
     newConstructor.prototype = OriginalConstructor.prototype;
     return newConstructor;
   };
+}
+
+function getHandlerArgsMetadataDecorator(type :symbol, ...args: any[]) {
+  return function (target: Object, propertyKey: string, parameterIndex: number) {
+    const handlerArgs:Array<any> = getMetadata(HANDLER_ARGS_METADATA, target, propertyKey) || [];
+    handlerArgs[parameterIndex] = { type, args };
+    defineMetadata(HANDLER_ARGS_METADATA, handlerArgs, target, propertyKey);
+  };
+}
+
+export function Param(name?: string) {
+  return getHandlerArgsMetadataDecorator(PARAM_METADATA, ...(name ? [name] : []));
+}
+
+export function To(propertyPath?:string) {
+  return getHandlerArgsMetadataDecorator(TO_METADATA, ...(propertyPath ? [propertyPath] : []));
+}
+
+export function From(propertyPath?:string) {
+  return getHandlerArgsMetadataDecorator(FROM_METADATA, ...(propertyPath ? [propertyPath] : []));
+}
+
+export function Query(name?:string) {
+  return getHandlerArgsMetadataDecorator(QUERY_METADATA, ...(name ? [name] : []));
+}
+
+export function Meta(path?: string) {
+  return getHandlerArgsMetadataDecorator(META_METADATA, ...(path ? [path] : []));
 }

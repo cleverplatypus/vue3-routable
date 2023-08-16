@@ -1,6 +1,6 @@
 {
   "name": "vue3-routable",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "repository": "https://github.com/cleverplatypus/vue3-routable",
   "description": "Small utility to annotate classes of objects to be activated/deactivated upon vue-router routes change ",
   "main": "src/index.ts",
@@ -9,19 +9,22 @@
   "scripts": {
     "test": "jest"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@types/lodash.get": "^4.4.7",
+    "lodash.get": "^4.4.2"
+  },
   "peerDependencies": {
     "vue": "^3.2.0",
     "vue-router": "^4.2.2"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.3",
-    "jest": "^29.6.1",
     "@babel/types": "^7.22.5",
+    "@types/jest": "^29.5.3",
     "@types/lodash.isequal": "^4.5.6",
     "@types/node": "^20.3.1",
     "@types/vue": "^2.0.0",
     "@vue/tsconfig": "^0.4.0",
+    "jest": "^29.6.1",
     "lodash.isequal": "^4.5.0",
     "mini-signals": "^2.0.0",
     "ts-jest": "^29.1.1",
