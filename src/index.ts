@@ -19,7 +19,7 @@ import {
   PARAM_METADATA,
   QUERY_METADATA,
   TO_METADATA,
-} from './symbols.js';
+} from './symbols.ts';
 import get from 'lodash.get';
 
 function checkRouteHandlerReturnValue(val: any, clazz: string) {

@@ -24,6 +24,9 @@ const router = createFakeRouter({
     },
     {
       name: 'login-page',
+      meta : {
+        requiresAuth : false
+      }
     }
   ]
 } as any);

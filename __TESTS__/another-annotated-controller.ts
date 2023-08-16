@@ -6,7 +6,7 @@ import sessionModel from './session-model.ts';
 export class AnotherAnnotatedController {
     
     @RouteActivated({priority : 100 })
-    async activate(to:RouteLocation, from:RouteLocation) {
+    async activate() {
         sessionModel.userData = { email : 'john.doe@email.com'}
     }
 

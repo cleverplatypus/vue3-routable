@@ -25,6 +25,7 @@ class FakeRouter {
    #routes:Array<RouteLocation>
 
     constructor(config:any) {
+        this.#config = config;
         this.#routes = config.routes.map((r:RouteLocationNamedRaw) => rawToLocation(r));
         const root = this.#routes.find(r => r.path === '/')!;
         this.#currentRoute = root;

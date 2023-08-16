@@ -1,5 +1,5 @@
 import { RouteLocation } from 'vue-router';
-import { Routable, RouteActivated, GuardRouteEnter } from '../src/index.ts';
+import { Routable, RouteActivated, GuardRouteEnter, To, Meta } from '../src/index.ts';
 import sessionModel from './session-model.ts';
 import {MiniSignal as Signal} from 'mini-signals';
 
@@ -9,13 +9,13 @@ const EMAILS_SIGNAL:Signal = new Signal<[string]>()
 export class AnnotatedController {
     
     @RouteActivated()
-    async activate(to:RouteLocation, from:RouteLocation) {
+    async activate() {
         this.sendEmailTo(sessionModel.userData?.email as string);
     }
 
     @GuardRouteEnter() 
-    async checkAuthentication(to:RouteLocation) {
-        if(!to.meta.requiresAuth || sessionModel.isAuthenticated) {
+    async checkAuthentication(@Meta('requiresAuth') requiresAuth:boolean) {
+        if(!requiresAuth || sessionModel.isAuthenticated) {
            return true; 
         }
         return { name : 'login-page'};
