@@ -35,6 +35,19 @@ export type RouteChangeHandler = (
 
 export type RouteResolver = (route: RouteLocation) => boolean;
 
+export type RouteMatchArgument = 
+  Array<string | RegExp> | string | RegExp | RouteResolver
+
+
+export type RouteWatcherConfigRaw = {
+  priority: number;
+  match: RouteMatchArgument;
+}
+
+export type RouteWatcherConfig = RouteWatcherConfigRaw & {
+  handler: string
+}
+
 export type RoutableConfig = {
   activeRoutes: Array<string | RegExp | RouteResolver>;
   activate?: RouteChangeHandlerConfig;
@@ -43,4 +56,6 @@ export type RoutableConfig = {
   guardEnter?: GuardConfig;
   guardLeave?: GuardConfig;
   class? : string;
+  watchers?: Array<RouteWatcherConfig>;
+  isActive: boolean;
 };

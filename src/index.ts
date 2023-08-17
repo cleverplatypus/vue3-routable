@@ -1,16 +1,22 @@
-
 import type {
   RouteLocation,
   RouteRecordNormalized,
   RouteRecordRaw,
   Router,
 } from 'vue-router';
-import { getMetadata, getRegisteredClass, routeableObjects } from './registry.ts';
+import {
+  getActiveRoutablesConfigs,
+  getMetadata,
+  getRegisteredClass,
+  routeableObjects,
+} from './registry.ts';
 import type {
   GuardConfig,
   HandlerParamMetadata,
   RoutableConfig,
   RouteChangeHandlerConfig,
+  RouteMatchArgument,
+  RouteWatcherConfig,
 } from './types.ts';
 import {
   FROM_METADATA,
@@ -72,18 +78,19 @@ function setRoutesMetadata(
     }
   });
 }
+function routeMatches(route: RouteLocation, expression: RouteMatchArgument) {
+  if (expression instanceof RegExp) {
+    return expression.test(route.meta?.pathName as string);
+  } else if (typeof expression === 'string') {
+    return expression === route.meta?.pathName;
+  } else {
+    return (expression as Function)(route);
+  }
+}
 
-function matchesRoute(config: RoutableConfig, route: RouteLocation) {
+function configMatchesRoute(config: RoutableConfig, route: RouteLocation) {
   if (Array.isArray(config.activeRoutes)) {
-    return !!config.activeRoutes.find((exp) => {
-      if (exp instanceof RegExp) {
-        return exp.test(route.meta?.pathName as string);
-      } else if (typeof exp === 'string') {
-        return exp === route.meta?.pathName;
-      } else {
-        return exp(route);
-      }
-    });
+    return !!config.activeRoutes.find((exp) => routeMatches(route, exp));
   }
 }
 
@@ -99,14 +106,17 @@ function handleError(promise: any, object: any, method: string) {
 }
 
 function getHandlerParams(
-  config: RouteChangeHandlerConfig,
-  target : Object,
+  methodName:string,
+  target: Object,
   to: RouteLocation,
   from: RouteLocation
 ): Array<any> {
   return (
-    getMetadata(HANDLER_ARGS_METADATA, Object.getPrototypeOf(target), config.handler) ||
-    []
+    getMetadata(
+      HANDLER_ARGS_METADATA,
+      Object.getPrototypeOf(target),
+      methodName
+    ) || []
   ).map((param: HandlerParamMetadata) => {
     switch (param.type) {
       case PARAM_METADATA:
@@ -121,7 +131,6 @@ function getHandlerParams(
         return param.args.length ? get(from, param.args[0]) : from;
     }
   });
-
 }
 
 async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
@@ -134,12 +143,12 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
 
   Array.from(routeableObjects).forEach((routable) => {
     const key = Object.getPrototypeOf(routable);
-    const config = getRegisteredClass(key);
+    const config:RoutableConfig = getRegisteredClass(key);
     if (!config) {
       return;
     }
-    const matchesTo = matchesRoute(config!, to);
-    const matchesFrom = matchesRoute(config!, from);
+    const matchesTo = configMatchesRoute(config!, to);
+    const matchesFrom = configMatchesRoute(config!, from);
     if (!matchesTo && !matchesFrom) {
       return;
     }
@@ -180,7 +189,9 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
       }
     }
   });
-  guards.sort((a, b) => Number(b.config.priority) - Number(a.config.priority));
+  guards.sort(
+    (a, b) => Number(b.config.priority) - Number(a.config.priority)
+  );
   handlers.sort(
     (a, b) => Number(b.config.priority) - Number(a.config.priority)
   );
@@ -188,25 +199,55 @@ async function handleRouteChange(to: RouteLocation, from: RouteLocation) {
 
   for (const guard of guards) {
     outcome = checkRouteHandlerReturnValue(
-      await guard.target[guard.config.handler](...getHandlerParams(guard.config, guard.target, to, from)),
+      await guard.target[guard.config.handler](
+        ...getHandlerParams(guard.config.handler, guard.target, to, from)
+      ),
       guard.class
     );
     if (outcome !== true) {
-      return outcome;
+      break;
     }
   }
+
+  // Check route activation
   if (outcome === true) {
     for (const handler of handlers) {
       outcome = checkRouteHandlerReturnValue(
-        await handler.target[handler.config.handler](...getHandlerParams(handler.config, handler.target, to, from)),
+        await handler.target[handler.config.handler](
+          ...getHandlerParams(handler.config.handler, handler.target, to, from)
+        ),
         handler.class
       );
+
+      const config: RoutableConfig = getRegisteredClass(Object.getPrototypeOf(handler.target));
+
+      // If the route is activated
+      if (configMatchesRoute(config, to) && 
+         (!config.activate || (config.activate && outcome === true))) {
+        config.isActive = true;
+      }
+
+      // If the route is deactivated
+      if (configMatchesRoute(config, from) && 
+         (!config.deactivate || (config.deactivate && outcome === true))) {
+        config.isActive = false;
+      }
+
       if (outcome !== true) {
-        return outcome;
+        break;
       }
     }
   }
-  return true;
+  const activeWatchers = getActiveRoutablesConfigs()
+    .reduce((acc:Array<{ target: any, config : RouteWatcherConfig}>, curr:{ target:any, config:RoutableConfig}) => 
+      acc.concat(curr.config.watchers?.map(watcher => ({target:curr.target, config:watcher})) || []), [])
+  
+  for(const watcherConfig of activeWatchers) {
+    await watcherConfig.target[watcherConfig.config.handler](
+      ...getHandlerParams(watcherConfig.config.handler, watcherConfig.target, to, from)
+    )
+  }
+  return outcome;
 }
 
 export function registerRouter(router: Router): Router {

@@ -8,13 +8,22 @@ const metadata = new Map<MetadataType, Map<Object, Map<string, any>>>();
 
 export function getRegisteredClass(key: any): RoutableConfig {
   if (!registeredClasses.has(key)) {
-    registeredClasses.set(key, { activeRoutes: [] })
+    registeredClasses.set(key, { activeRoutes: [], isActive: false })
   }
   return registeredClasses.get(key)!
 }
 
 export function registerRoutableObject(object: Object) {
   routeableObjects.add(object)
+}
+
+export function getActiveRoutablesConfigs() {
+  return Array.from(routeableObjects)
+    .map(obj => ({ 
+      target : obj, 
+      config: getRegisteredClass(Object.getPrototypeOf(obj))
+    }))
+    .filter(obj => obj.config.isActive);
 }
 
 export function defineMetadata(key: MetadataType, value: any, target: Object, propertyKey: string) {

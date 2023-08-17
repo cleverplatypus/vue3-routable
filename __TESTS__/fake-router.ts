@@ -2,11 +2,12 @@ import isEqual from 'lodash.isequal';
 
 import { RouteLocation, RouteLocationNamedRaw, RouteLocationRaw } from 'vue-router';
 import {RouteChangeHandler} from '../src/types.ts';
+import cloneDeep from 'lodash.clonedeep';
 
 
 
 function rawToLocation(raw:RouteLocationNamedRaw) : RouteLocation {
-    return Object.assign({
+    return Object.assign(cloneDeep({
         path : `/${String(raw.name)}`,
         matched : [],
         meta : {},
@@ -14,9 +15,8 @@ function rawToLocation(raw:RouteLocationNamedRaw) : RouteLocation {
         query: null,
         hash: '',
         redirectedFrom : null
-        }, raw as RouteLocationNamedRaw);
+        }), raw as RouteLocationNamedRaw);
     }
-
 
 class FakeRouter {
    #config:any

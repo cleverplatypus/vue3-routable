@@ -1,34 +1,53 @@
 import createFakeRouter from './fake-router';
 import { registerRouter, registerRoutableClasses } from '../src/index';
 import { Router } from 'vue-router';
-import annotatedController, { AnnotatedController } from './annotated-controller';
+import annotatedController, {
+  AnnotatedController,
+} from './annotated-controller';
 import sessionModel from './session-model';
 import { AnotherAnnotatedController } from './another-annotated-controller';
 registerRoutableClasses(AnnotatedController, AnotherAnnotatedController);
-
 
 const router = createFakeRouter({
   routes: [
     {
       path: '/',
       name: 'home',
+      params : {},
+      query : {},
+      meta: {}
     },
     {
       name: 'auth-route',
-      meta : {
-        requiresAuth : true
-      }
+      meta: {
+        requiresAuth: true,
+      },
+      params : {},
+      query : {}
     },
     {
       name: 'basic-route',
+      params : {},
+      query : {},
+      meta: {}
     },
     {
       name: 'login-page',
-      meta : {
-        requiresAuth : false
-      }
-    }
-  ]
+      meta: {
+        requiresAuth: false,
+      },
+      params : {},
+      query : {}
+    },
+    {
+      name: 'deep-parametrised',
+      params: {
+        param1: 'deep',
+        param2: 'thought',
+        meta: {}
+      },
+    },
+  ],
 } as any);
 
 registerRouter(router as unknown as Router);
@@ -55,18 +74,23 @@ describe('Injection test', () => {
     test('route_handlerpriority_order', async () => {
       sessionModel.isAuthenticated = true;
       let email = '';
-      const unsubscribe = annotatedController.subscribeToEmailEvents((anEmail:string) => {
-        email = anEmail;
-      })
+      const unsubscribe = annotatedController.subscribeToEmailEvents(
+        (anEmail: string) => {
+          email = anEmail;
+        }
+      );
       await router.push({ name: 'home' });
       await router.push({ name: 'auth-route' });
       unsubscribe();
-      expect(email).toEqual('john.doe@email.com')
+      expect(email).toEqual('john.doe@email.com');
     });
-    test('catch_al_route', () => {
-      //write test
-      
-    })
+    test('route_with_parameter_decorators', async () => {
+      await router.push({ name: 'deep-parametrised' });
+      expect(sessionModel.testData?.paramDecoratorValue).toEqual({
+        param1: 'deep',
+        param2: 'thought',
+      });
+    });
   } catch (e) {
     console.error(e);
   }
