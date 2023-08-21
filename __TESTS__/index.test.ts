@@ -4,7 +4,7 @@ import { Router } from 'vue-router';
 import annotatedController, {
   AnnotatedController,
 } from './annotated-controller';
-import sessionModel from './session-model';
+import sessionModel from './test-model';
 import { AnotherAnnotatedController } from './another-annotated-controller';
 registerRoutableClasses(AnnotatedController, AnotherAnnotatedController);
 
@@ -91,6 +91,14 @@ describe('Injection test', () => {
         param2: 'thought',
       });
     });
+    test('accumulated_paths_from_watchers', async () => {
+      await router.push({ name: 'deep-parametrised' });
+      expect(sessionModel.testData?.paths).toEqual([
+        '/basic-route',
+        '/login-page'
+      ]);
+    })
+
   } catch (e) {
     console.error(e);
   }

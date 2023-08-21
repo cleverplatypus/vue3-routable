@@ -112,6 +112,11 @@ export class ProductsListScreenController {
         }
         return true;
     }
+
+    @RouteWatcher(/product/)
+    watchAllProductRelatedRouteChanges(@To('path') pagePath:string) {
+        productPagesAudit.add(pagePath)
+    }
 }
 
 export default new ProductsListScreenController();//good idea for it to be a singleton
@@ -191,12 +196,53 @@ So, for instance, for a product editor's (`name : 'product-editor-screen'`) nest
 
 The `meta.pathName` property is used to match against the `@Routable` arguments.
 
-## Route handlers
+## Route Handlers
 
 **Important**: methods annotated with the `@RouteActivated`, `@RouteDeactivated`. `@RouteUpdated`, `GuardRouteEnter` and `GuardRouteLeave` must by either declared `async` or return a `Promise` or the app will fail at class-registration time.
 <br><br>
 
-## Injectable handler arguments
+## Route Watchers
+`@RouteWatcher(config:RouteWatcherConfig)` can be used to observe route changes,
+
+The class still needs to be annotated with `@Routable(matcher)` but no further handlers/guards need to be declared.
+
+Watchers are called, if the routable class is active, both on route enter and exit.
+
+```ts
+type RouteHandlerEventType = 'enter' | 'leave' | 'update';
+
+type RouteWatcherConfig = {
+  priority?: number;
+  match?: RouteMatchExpression;
+  on? : Array<RouteHandlerEventType> | RouteHandlerEventType;
+}
+```
+All watcher configuration parameters are optional. If none are set the watcher will be called every time a route changes and the `@Routable()` class matcher pattern matches.
+
+Parameters injectors can be used as usual.
+
+
+
+```ts
+
+@Routable(/.*/)
+class Auditor {
+    @RouteWatcher({match : 'product-page', priority : 0})
+    productPageAuditor(@Param('productId') productId:string ) {
+        if(productId) //watchers are called both on enter/exit route
+            audit.productVisited(productId);
+    }
+    
+    @RouteWatcher({ match : 'help-page' })
+    helpPageSpy(@Query('topic-search') topicSearch:string) {
+        if(topicSearch) 
+            audit.addRequestedSearchTopic(searchTopic);
+    }
+}
+```
+
+
+## Parameter Injectors
 
 `vue3-routable` provides param decorators to inject route handlers with route information. This makes the code more readable and adds some nice abstraction over the router's inner workings.
 
@@ -256,7 +302,7 @@ activate(
 ```
 
 ```ts
-@RouteActivated({)
+@RouteActivated()
 activate(
     @From('name') fromRouteName:string,
     @From('meta.foo') fromFoo:string

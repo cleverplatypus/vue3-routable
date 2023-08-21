@@ -1,6 +1,6 @@
 import { defineMetadata, getMetadata, getRegisteredClass, registerRoutableObject } from './registry.ts';
 import { FROM_METADATA, HANDLER_ARGS_METADATA, META_METADATA, PARAM_METADATA, QUERY_METADATA, TO_METADATA } from './symbols.ts';
-import type { RouteMatchArgument, RouteResolver, RouteWatcherConfigRaw } from './types.ts';
+import type { RouteMatchExpression, RouteResolver, RouteWatcherConfig } from './types.ts';
 
 type PlainDecoratorSignature = [
   target: any,
@@ -104,10 +104,12 @@ export function GuardRouteEnter(
 }
 
 
-export function RouteWatcher(config : RouteWatcherConfigRaw) {
+export function RouteWatcher(config : RouteWatcherConfig) {
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const classConfig = getRegisteredClass(target);
-    classConfig.watchers!.push(Object.assign({}, config, {handler : propertyKey}));
+    if(config.on && !Array.isArray(config.on))
+      config.on = [config.on];
+    classConfig.watchers.push(Object.assign({}, config, {handler : propertyKey}));
   };
 }
 
@@ -134,7 +136,7 @@ export function GuardRouteLeave(
 }
 
 export function Routable(
-  arg?: RouteMatchArgument
+  arg?: RouteMatchExpression
 ): Function {
   return function (OriginalConstructor: any) {
     const config = getRegisteredClass(OriginalConstructor.prototype);

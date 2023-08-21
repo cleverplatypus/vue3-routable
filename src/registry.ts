@@ -1,14 +1,13 @@
 import type { MetadataType, RoutableConfig } from './types.ts';
 
-
 export const registeredClasses: Map<any, RoutableConfig> = new Map()
-export const routeableObjects = new Set<Object>()
+export const routeableObjects = new Set<object>()
 
 const metadata = new Map<MetadataType, Map<Object, Map<string, any>>>();
 
 export function getRegisteredClass(key: any): RoutableConfig {
   if (!registeredClasses.has(key)) {
-    registeredClasses.set(key, { activeRoutes: [], isActive: false })
+    registeredClasses.set(key, { activeRoutes: [], isActive: false, watchers: [] })
   }
   return registeredClasses.get(key)!
 }

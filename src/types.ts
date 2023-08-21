@@ -3,6 +3,8 @@ import {TO_METADATA, PARAM_METADATA, QUERY_METADATA, META_METADATA, FROM_METADAT
 
 export type MethodName = string;
 
+export type RouteHandlerEventType = 'enter' | 'leave' | 'update';
+
 export type RouteChangeHandlerConfig = {
   handler: MethodName;
   priority: number;
@@ -35,17 +37,20 @@ export type RouteChangeHandler = (
 
 export type RouteResolver = (route: RouteLocation) => boolean;
 
-export type RouteMatchArgument = 
+export type RouteMatchExpression = 
   Array<string | RegExp> | string | RegExp | RouteResolver
 
 
-export type RouteWatcherConfigRaw = {
-  priority: number;
-  match: RouteMatchArgument;
+export type RouteWatcherConfig = {
+  priority?: number;
+  match?: RouteMatchExpression;
+  on? : Array<RouteHandlerEventType> | RouteHandlerEventType;
 }
 
-export type RouteWatcherConfig = RouteWatcherConfigRaw & {
+export type RouteWatcherContext = RouteWatcherConfig & {
   handler: string
+  currentAction? : RouteHandlerEventType
+  target? : any
 }
 
 export type RoutableConfig = {
@@ -56,6 +61,6 @@ export type RoutableConfig = {
   guardEnter?: GuardConfig;
   guardLeave?: GuardConfig;
   class? : string;
-  watchers?: Array<RouteWatcherConfig>;
+  watchers: Array<RouteWatcherContext>;
   isActive: boolean;
 };

@@ -1,18 +1,21 @@
 import { reactive } from 'vue';
 
-type SessionModel = {
+type TestModel = {
     isAuthenticated : boolean,
     userData?: {
         email : string
     },
     testData : {
         paramDecoratorValue? : Record<string, any>
+        paths:string[]
     }
 }
 
-const model: SessionModel = reactive({
+const model: TestModel = reactive({
     isAuthenticated : false,
-    testData : {}
+    testData : {
+        paths: []
+    }
 });
 
 export default model
