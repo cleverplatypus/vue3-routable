@@ -54,7 +54,7 @@ export type RouteWatcherContext = RouteWatcherConfig & {
 }
 
 export type RoutableConfig = {
-  activeRoutes: Array<string | RegExp | RouteResolver>;
+  activeRoutes: RouteMatchExpression;
   activate?: RouteChangeHandlerConfig;
   deactivate?: RouteChangeHandlerConfig;
   update?: RouteChangeHandlerConfig;
@@ -62,5 +62,4 @@ export type RoutableConfig = {
   guardLeave?: GuardConfig;
   class? : string;
   watchers: Array<RouteWatcherContext>;
-  isActive: boolean;
 };

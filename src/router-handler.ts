@@ -1,6 +1,6 @@
 import get from 'lodash.get';
 import type { RouteLocation, RouteRecordNormalized, RouteRecordRaw } from 'vue-router';
-import { getActiveRoutablesConfigs, getMetadata, getRegisteredClass, routeableObjects } from './registry';
+import { getMetadata, getRegisteredClass, routeableObjects } from './registry';
 import { FROM_METADATA, HANDLER_ARGS_METADATA, META_METADATA, PARAM_METADATA, QUERY_METADATA, TO_METADATA } from './symbols';
 import type { GuardConfig, HandlerParamMetadata, RoutableConfig, RouteChangeHandlerConfig, RouteMatchExpression, RouteWatcherContext } from './types';
 
@@ -22,7 +22,7 @@ type RoutableCallableConfig = {
   export async function handleRouteChange(to: RouteLocation, from: RouteLocation) : Promise<any> {
     const guards = getGuards(to, from);
     const handlers = getHandlers(to, from);
-  
+    
     sortGuardsAndHandlers(guards, handlers);
   
     const guardOutcome = await processGuards(guards, to, from);
@@ -31,11 +31,11 @@ type RoutableCallableConfig = {
     if (guardOutcome === true) {
       handlerOutcome = await processHandlers(handlers, to, from);
     }
-
-    await processWatchers(to, from);
     
+    await processWatchers(to, from);
     return guardOutcome === true ? handlerOutcome : guardOutcome;
   }
+
 
 /**
  * Sets the meta pathName property for each route in the given root and routes arrays.
@@ -127,9 +127,6 @@ type RoutableCallableConfig = {
     }
   }
   
-  function configMatchesRoute(config: RoutableConfig, route: RouteLocation) : boolean {
-      return !!config.activeRoutes.find((exp) => routeMatches(route, exp));
-  }
   
   /**
    * Retrieves the handler parameters based on the provided method name, target object,
@@ -184,10 +181,10 @@ type RoutableCallableConfig = {
   function getGuards(to: RouteLocation, from: RouteLocation) {
     return Array.from(routeableObjects).reduce((out:Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(Object.getPrototypeOf(routable));
-      if (config.guardEnter && configMatchesRoute(config, to)) {
+      if (config.guardEnter && routeMatches(to, config.activeRoutes)) {
         out.push({ config: config.guardEnter, class: config.class!, target: routable });
       }
-      if (config.guardLeave && configMatchesRoute(config, from)) {
+      if (config.guardLeave && routeMatches(from, config.activeRoutes)) {
         out.push({ config: config.guardLeave, class: config.class!, target: routable });
       }
       return out;
@@ -206,7 +203,7 @@ type RoutableCallableConfig = {
     return Array.from(routeableObjects).reduce((out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(Object.getPrototypeOf(routable));
       if (to.name !== from.name) {
-        if (config.activate && configMatchesRoute(config, to)) {
+        if (config.activate && routeMatches(to, config.activeRoutes)) {
           out.push({ config: config.activate, class: config.class!, target: routable });
         }
         else if (config.deactivate) {
@@ -259,15 +256,7 @@ type RoutableCallableConfig = {
       const outcome = checkRouteHandlerReturnValue(
         await handler.target[handler.config.handler](...getHandlerParams(handler.config.handler, handler.target, to, from)),
         handler.class
-      );
-  
-      const config = getRegisteredClass(Object.getPrototypeOf(handler.target));
-      if (configMatchesRoute(config, to) && (!config.activate || (config.activate && outcome === true)))
-        config.isActive = true;
-      else if (configMatchesRoute(config, from) && (!config.deactivate || (config.deactivate && outcome === true)))
-      //note: important to use `else` here because a catch-all regexp will also match deactivate
-        config.isActive = false;
-  
+      );  
       if (outcome !== true) return outcome;
     }
     return true;
@@ -297,7 +286,22 @@ type RoutableCallableConfig = {
     }
     return false;
   }
-
+  /**
+   * Retrieves the active routable configurations based on the provided route locations.
+   *
+   * @param {RouteLocation} to - The target route location.
+   * @param {RouteLocation} from - The source route location.
+   * @return {Array<{config: RoutableConfig, target: any}>} An array of objects containing the routable configuration and target object.
+   */
+  export function getActiveRoutablesConfigs(to: RouteLocation, from:RouteLocation) : Array<{config: RoutableConfig, target: any}> {
+    return Array.from(routeableObjects)
+      .map(obj => ({ 
+        target : obj, 
+        config: getRegisteredClass(Object.getPrototypeOf(obj))
+      }))
+      .filter(obj => routeMatches(to, obj.config.activeRoutes) || routeMatches(from, obj.config.activeRoutes))
+  }
+  
   /**
    * Retrieves an array of prioritised active watchers based on the provided route locations.
    *
@@ -306,7 +310,7 @@ type RoutableCallableConfig = {
    * @return {Array<RouteWatcherContext>} - An array of prioritised active watchers.
    */
   function getPrioritisedActiveWatchers(to: RouteLocation, from:RouteLocation) : Array<RouteWatcherContext> {
-    return getActiveRoutablesConfigs()
+    return getActiveRoutablesConfigs(to, from)
       .flatMap(curr => (curr.config.watchers?.map((watcherConfig:RouteWatcherContext) => ({ 
           ...watcherConfig,
           target: curr.target

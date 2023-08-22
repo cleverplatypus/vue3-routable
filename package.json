@@ -1,6 +1,6 @@
 {
   "name": "vue3-routable",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "repository": "https://github.com/cleverplatypus/vue3-routable",
   "description": "Small utility to annotate classes of objects to be activated/deactivated upon vue-router routes change ",
   "main": "src/index.ts",

@@ -206,7 +206,7 @@ The `meta.pathName` property is used to match against the `@Routable` arguments.
 
 The class still needs to be annotated with `@Routable(matcher)` but no further handlers/guards need to be declared.
 
-Watchers are called, if the routable class is active, both on route enter and exit.
+Watchers are called if the routable class is active.
 
 ```ts
 type RouteHandlerEventType = 'enter' | 'leave' | 'update';
