@@ -16,7 +16,7 @@ export function RouteMatcher(
   descriptor: PropertyDescriptor
 ) {
   const config = getRegisteredClass(target);
-  config!.activeRoutes.push((target as any)[propertyKey]);
+  (config!.activeRoutes as Array<any>).push((target as any)[propertyKey]);
 }
 
 export function RouteActivated(
@@ -144,7 +144,7 @@ export function Routable(
 
     if (arg && (!Array.isArray(arg) || (arg as Array<any>).length)) {
       const all = Array.isArray(arg) ? arg : [arg];
-      config.activeRoutes.push(...(all || []));
+      (config.activeRoutes as Array<any>).push(...(all || []));
     }
 
     function newConstructor(...args: any[]) {
