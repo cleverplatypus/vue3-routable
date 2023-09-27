@@ -24,7 +24,7 @@ export function RouteActivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      'RouteActivated decorator must be used with brachkets: RouteActivated(config?)'
+      'RouteActivated decorator must be used with brackets: RouteActivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -45,7 +45,7 @@ export function RouteDeactivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      'RouteDeactivated decorator must be used with brachkets: RouteDeactivated(config?)'
+      'RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -66,7 +66,7 @@ export function RouteUpdated(
 ) {
   if (args.length === 3)
     throw new Error(
-      'RouteUpdated decorator must be used with brachkets: RouteUpdated(config?)'
+      'RouteUpdated decorator must be used with brackets: RouteUpdated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -87,7 +87,7 @@ export function GuardRouteEnter(
 ) {
   if (args.length === 3)
     throw new Error(
-      'GuardRouteEnter decorator must be used with brachkets: GuardRouteEnter(config?)'
+      'GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -118,7 +118,7 @@ export function GuardRouteLeave(
 ) {
   if (args.length === 3)
     throw new Error(
-      'GuardRouteLeave decorator must be used with brachkets: GuardRouteLeave(config?)'
+      'GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
