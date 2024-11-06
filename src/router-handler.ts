@@ -2,13 +2,15 @@ import get from 'lodash.get';
 import type { RouteLocation, RouteRecordNormalized, RouteRecordRaw } from 'vue-router';
 import { getMetadata, getRegisteredClass, routeableObjects } from './registry';
 import { FROM_METADATA, HANDLER_ARGS_METADATA, META_METADATA, PARAM_METADATA, QUERY_METADATA, TO_METADATA } from './symbols';
-import type { GuardConfig, HandlerParamMetadata, RoutableConfig, RouteChangeHandlerConfig, RouteMatchExpression, RouteWatcherContext } from './types';
+import type { GuardConfig, HandlerParamMetadata, RoutableConfig, RouteChangeHandlerConfig, RouteHandlerEventType, RouteMatchConfig, RouteMatchExpression, RouteWatcherContext, RoutingConfig } from './types';
+
 
 type RoutableCallableConfig = {
     target : any
     class : string
     config : GuardConfig | RouteChangeHandlerConfig
   }
+
 
   /**
    * Handles a route change.
@@ -35,41 +37,6 @@ type RoutableCallableConfig = {
     await processWatchers(to, from);
     return guardOutcome === true ? handlerOutcome : guardOutcome;
   }
-
-
-/**
- * Sets the meta pathName property for each route in the given root and routes arrays.
- *
- * @param {Array<RouteRecordNormalized>} root - The root array of routes.
- * @param {Array<RouteRecordNormalized>} routes - The array of routes.
- * @param {string} [parentPath=''] - The parent path string.
- */
-  export function setRoutesMetaPathName(
-    root: Array<RouteRecordNormalized>,
-    routes: Array<RouteRecordNormalized>,
-    parentPath = ''
-  ) : void {
-    routes.forEach((node) => {
-      const pathName = parentPath
-        ? `${parentPath}.${String(node.name!.toString())}`
-        : node.name!.toString();
-      node.meta = node.meta || {};
-      node.meta.pathName = pathName;
-      const rootNode = root.find((r) => r.name === node.name)!;
-      rootNode.meta = rootNode.meta || {};
-      rootNode.meta.pathName = pathName;
-  
-      if (node.children?.length) {
-        setRoutesMetaPathName(
-          root,
-          node.children as Array<RouteRecordNormalized>,
-          pathName
-        );
-      }
-    });
-  }
-
-
   
   /**
    * Checks the return value of the route handler/guard function.
@@ -105,8 +72,6 @@ type RoutableCallableConfig = {
   
     throwError();
   }
-  
-  
   /**
    * Checks if the given route matches the provided route match expression(s).
    *
@@ -114,17 +79,23 @@ type RoutableCallableConfig = {
    * @param {RouteMatchExpression} expression - The route match expression to compare against.
    * @return {boolean} - Returns true if the route matches any of the expressions, otherwise returns false.
    */
-  function routeMatches(route: RouteLocation, expression: RouteMatchExpression) : boolean {
+  function routeMatches(route : RouteLocation, {expression, target} : RouteMatchConfig) : boolean {
+    const matchTarget = get(route, target);
     if(Array.isArray(expression)) {
-      return expression.some((exp) => routeMatches(route, exp));
+      return expression.some((subexp) => routeMatches(route, {expression : subexp, target}));
     }
-    if (expression instanceof RegExp) {
-      return expression.test(route.meta?.pathName as string);
+    if ((expression as any) instanceof RegExp) {
+      return (expression as RegExp).test(matchTarget as string);
     } else if (typeof expression === 'string') {
-      return expression === route.meta?.pathName;
+      return expression === matchTarget;
     } else {
-      return (expression as Function)(route);
+      return (expression as Function)(matchTarget);
     }
+  }
+  
+
+  function routeChainMatches(route : RouteLocation, config : RouteMatchConfig) : boolean {
+    return !!route.matched.find(route => routeMatches(route, config))
   }
   
   
@@ -203,10 +174,10 @@ type RoutableCallableConfig = {
     return Array.from(routeableObjects).reduce((out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(Object.getPrototypeOf(routable));
       if (to.name !== from.name) {
-        if (config.activate && routeMatches(to, config.activeRoutes)) {
+        if (config.activate && routeMatches(to, config.activeRoutes) && !routeChainMatches(from, config.activeRoutes)) {
           out.push({ config: config.activate, class: config.class!, target: routable });
         }
-        else if (config.deactivate) {
+        else if (config.deactivate && !routeChainMatches(to, config.activeRoutes)&& routeChainMatches(from, config.activeRoutes)) {
           out.push({ config: config.deactivate, class: config.class!, target: routable });
         }
       } else if (config.update) {
@@ -272,16 +243,18 @@ type RoutableCallableConfig = {
    * @return {boolean} - Returns true if the watcher applies to the route transition, otherwise returns false.
    */
   function watcherApplies(context: RouteWatcherContext, to: RouteLocation, from:RouteLocation) {
-    const matchesTo = !context.match || routeMatches(to, context.match);
-    const matchesFrom = !context.match || routeMatches(from, context.match);
+    const contextMatch = context.match as RouteMatchConfig;
+    const contextOn = context.on as RouteHandlerEventType[];
+    const matchesTo = !contextMatch || routeMatches(to, contextMatch);
+    const matchesFrom = !contextMatch || routeMatches(from, contextMatch);
     
-    if(matchesTo && to.name === from.name && (!context.on || context.on.includes('update'))) {
+    if(matchesTo && to.name === from.name && (!contextOn || contextOn.includes('update'))) {
       return true;
     }
-    if(matchesTo && context.on?.includes('enter')) {
+    if(matchesTo && contextOn?.includes('enter')) {
         return true;
     }
-    if(matchesFrom && context.on?.includes('leave')) {
+    if(matchesFrom && contextOn?.includes('leave')) {
       return true;
     }
     return false;

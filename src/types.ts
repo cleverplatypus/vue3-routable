@@ -23,6 +23,9 @@ export type HandlerParamMetadata = {
   type : ParamMetadataType
   args : Array<any>
 }
+export type RoutingConfig = {
+  defaultMatchTarget : RouteMatchTarget
+}
 
 export type GuardConfig = {
   priority: number;
@@ -37,13 +40,19 @@ export type RouteChangeHandler = (
 
 export type RouteResolver = (route: RouteLocation) => boolean;
 
+export type RouteMatchTarget = 'name' | 'name-chain' | 'path' | string
+
 export type RouteMatchExpression = 
   Array<string | RegExp> | string | RegExp | RouteResolver
 
+export type RouteMatchConfig = {
+  expression : RouteMatchExpression[]
+  target : RouteMatchTarget
+}
 
 export type RouteWatcherConfig = {
   priority?: number;
-  match?: RouteMatchExpression;
+  match?: RouteMatchConfig | RouteMatchExpression;
   on? : Array<RouteHandlerEventType> | RouteHandlerEventType;
 }
 
@@ -54,7 +63,7 @@ export type RouteWatcherContext = RouteWatcherConfig & {
 }
 
 export type RoutableConfig = {
-  activeRoutes: RouteMatchExpression;
+  activeRoutes: RouteMatchConfig;
   activate?: RouteChangeHandlerConfig;
   deactivate?: RouteChangeHandlerConfig;
   update?: RouteChangeHandlerConfig;

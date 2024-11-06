@@ -7,7 +7,7 @@ import annotatedController, {
 import sessionModel from './test-model';
 import { AnotherAnnotatedController } from './another-annotated-controller';
 registerRoutableClasses(AnnotatedController, AnotherAnnotatedController);
-
+import {describe, expect, it} from 'vitest'
 const router = createFakeRouter({
   routes: [
     {
@@ -54,24 +54,24 @@ registerRouter(router as unknown as Router);
 
 describe('Injection test', () => {
   try {
-    test('test_basics', async () => {
+    it('test_basics', async () => {
       await router.push({ name: 'home' });
       await router.push({ name: 'basic-route' });
       expect(router.currentRoute.name).toBe('basic-route');
     });
-    test('reject_unauthenticated', async () => {
+    it('reject_unauthenticated', async () => {
       sessionModel.isAuthenticated = false;
       await router.push({ name: 'home' });
       await router.push({ name: 'auth-route' });
       expect(router.currentRoute.name).toBe('login-page');
     });
-    test('accept_authenticated', async () => {
+    it('accept_authenticated', async () => {
       sessionModel.isAuthenticated = true;
       await router.push({ name: 'home' });
       await router.push({ name: 'auth-route' });
       expect(router.currentRoute.name).toBe('auth-route');
     });
-    test('route_handlerpriority_order', async () => {
+    it('route_handlerpriority_order', async () => {
       sessionModel.isAuthenticated = true;
       let email = '';
       const unsubscribe = annotatedController.subscribeToEmailEvents(
@@ -84,14 +84,14 @@ describe('Injection test', () => {
       unsubscribe();
       expect(email).toEqual('john.doe@email.com');
     });
-    test('route_with_parameter_decorators', async () => {
+    it('route_with_parameter_decorators', async () => {
       await router.push({ name: 'deep-parametrised' });
       expect(sessionModel.testData?.paramDecoratorValue).toEqual({
         param1: 'deep',
         param2: 'thought',
       });
     });
-    test('accumulated_paths_from_watchers', async () => {
+    it('accumulated_paths_from_watchers', async () => {
       await router.push({ name: 'deep-parametrised' });
       expect(sessionModel.testData?.paths).toEqual([
         '/basic-route',

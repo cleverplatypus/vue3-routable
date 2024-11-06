@@ -6,6 +6,8 @@
     "experimentalDecorators": true,
     "allowImportingTsExtensions" : true,
     "composite": true,
+    "esModuleInterop": true,
+    "lib": ["ES2023"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

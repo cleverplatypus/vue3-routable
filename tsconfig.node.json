@@ -4,6 +4,7 @@
   ],
   "compilerOptions": {
     "composite": true,
+    "lib": ["ES2023"],
     "module": "ESNext",
     "experimentalDecorators": true,
     "types": ["node"]

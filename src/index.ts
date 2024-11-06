@@ -1,11 +1,15 @@
 import type {
   Router
 } from 'vue-router';
-import { handleRouteChange, setRoutesMetaPathName } from './router-handler.ts';
+import routingConfig from './config.ts';
+import { handleRouteChange } from './router-handler.ts';
+import type { RoutingConfig } from './types.ts';
 
-export function registerRouter(router: Router): Router {
+
+export function registerRouter(router: Router, options : RoutingConfig = { defaultMatchTarget : 'name'}): Router {
   const routes = router.getRoutes();
-  setRoutesMetaPathName(routes, routes);
+  Object.assign(routingConfig, options);
+
   router.beforeEach(handleRouteChange);
   return router;
 }
