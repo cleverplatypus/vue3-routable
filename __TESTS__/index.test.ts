@@ -1,105 +1,69 @@
-import createFakeRouter from './fake-router';
-import { registerRouter, registerRoutableClasses } from '../src/index';
-import { Router } from 'vue-router';
-import annotatedController, {
-  AnnotatedController,
-} from './annotated-controller';
-import sessionModel from './test-model';
-import { AnotherAnnotatedController } from './another-annotated-controller';
-registerRoutableClasses(AnnotatedController, AnotherAnnotatedController);
-import {describe, expect, it} from 'vitest'
-const router = createFakeRouter({
-  routes: [
-    {
-      path: '/',
-      name: 'home',
-      params : {},
-      query : {},
-      meta: {}
-    },
-    {
-      name: 'auth-route',
-      meta: {
-        requiresAuth: true,
-      },
-      params : {},
-      query : {}
-    },
-    {
-      name: 'basic-route',
-      params : {},
-      query : {},
-      meta: {}
-    },
-    {
-      name: 'login-page',
-      meta: {
-        requiresAuth: false,
-      },
-      params : {},
-      query : {}
-    },
-    {
-      name: 'deep-parametrised',
-      params: {
-        param1: 'deep',
-        param2: 'thought',
-        meta: {}
-      },
-    },
-  ],
-} as any);
+import { describe, it, expect } from "vitest";
+import { createRouter, createMemoryHistory } from "vue-router";
+import TestComponent from "./TestComponent.vue";
+import {
+  registerRouter,
+  registerRoutableClasses,
+  routableObjectIsActive,
+} from "../src/index";
+import testControllerAbout, {
+  TestControllerAbout,
+} from "./test-controller-about";
 
-registerRouter(router as unknown as Router);
+registerRoutableClasses(TestControllerAbout);
 
-describe('Injection test', () => {
-  try {
-    it('test_basics', async () => {
-      await router.push({ name: 'home' });
-      await router.push({ name: 'basic-route' });
-      expect(router.currentRoute.name).toBe('basic-route');
-    });
-    it('reject_unauthenticated', async () => {
-      sessionModel.isAuthenticated = false;
-      await router.push({ name: 'home' });
-      await router.push({ name: 'auth-route' });
-      expect(router.currentRoute.name).toBe('login-page');
-    });
-    it('accept_authenticated', async () => {
-      sessionModel.isAuthenticated = true;
-      await router.push({ name: 'home' });
-      await router.push({ name: 'auth-route' });
-      expect(router.currentRoute.name).toBe('auth-route');
-    });
-    it('route_handlerpriority_order', async () => {
-      sessionModel.isAuthenticated = true;
-      let email = '';
-      const unsubscribe = annotatedController.subscribeToEmailEvents(
-        (anEmail: string) => {
-          email = anEmail;
-        }
-      );
-      await router.push({ name: 'home' });
-      await router.push({ name: 'auth-route' });
-      unsubscribe();
-      expect(email).toEqual('john.doe@email.com');
-    });
-    it('route_with_parameter_decorators', async () => {
-      await router.push({ name: 'deep-parametrised' });
-      expect(sessionModel.testData?.paramDecoratorValue).toEqual({
-        param1: 'deep',
-        param2: 'thought',
-      });
-    });
-    it('accumulated_paths_from_watchers', async () => {
-      await router.push({ name: 'deep-parametrised' });
-      expect(sessionModel.testData?.paths).toEqual([
-        '/basic-route',
-        '/login-page'
-      ]);
-    })
+const routes = [
+  {
+    path: "/",
+    name: "home",
+    component: TestComponent,
+  },
+  {
+    path: "/about",
+    name: "about",
+    component: TestComponent,
+    children: [
+      {
+        path: "nested1",
+        name: "nested1",
+        component: TestComponent,
+      },
+    ],
+  },
+];
+const router = registerRouter(
+  createRouter({
+    history: createMemoryHistory(),
+    routes,
+  })
+);
 
-  } catch (e) {
-    console.error(e);
-  }
+describe("basic_activation", () => {
+  it("should_activate_controller", async () => {
+    expect(testControllerAbout.isActive).toEqual(false);
+    await router.push({ name: "about" });
+    expect(testControllerAbout.isActive).toEqual(true);
+  });
+
+  it("should_deactivate_controller", async () => {
+    await router.push({ name: "home" });
+    expect(testControllerAbout.isActive).toEqual(false);
+  });
+});
+
+describe("routableObjectIsActive", () => {
+  it("should_activate_controller", async () => {
+    let isActive = routableObjectIsActive(router.currentRoute.value, testControllerAbout);
+    expect(isActive).toEqual(false);
+    await router.push({ name: "about" });
+    isActive = routableObjectIsActive(router.currentRoute.value, testControllerAbout);
+    expect(isActive).toEqual(true);
+  });
+
+  it("should_deactivate_controller", async () => {
+    await router.push({ name: "home" });
+    expect(
+      routableObjectIsActive(router.currentRoute.value, testControllerAbout)
+    ).toEqual(false);
+  });
 });

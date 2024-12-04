@@ -12,7 +12,8 @@
     "module": "es2015",
     "lib": ["ES2023"],
     "moduleResolution": "node",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": ["vite/client"]
 
   },
   "references": [

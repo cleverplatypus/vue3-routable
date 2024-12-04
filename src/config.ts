@@ -1,6 +1,7 @@
-import { RoutingConfig } from "./types";
+import type { RoutingConfig } from "./types";
 
 export default  {
-    defaultMatchTarget : 'name'
+    defaultMatchTarget : 'name',
+    routeNameChainSeparator : '.'
 } as RoutingConfig
 

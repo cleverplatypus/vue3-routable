@@ -1,6 +1,6 @@
 import { defineMetadata, getMetadata, getRegisteredClass, registerRoutableObject } from './registry.ts';
 import { FROM_METADATA, HANDLER_ARGS_METADATA, META_METADATA, PARAM_METADATA, QUERY_METADATA, TO_METADATA } from './symbols.ts';
-import type { RouteMatchConfig, RouteMatchExpression, RouteResolver, RouteWatcherConfig } from './types.ts';
+import type { RouteMatchExpression, RouteResolver, RouteWatcherConfig } from './types.ts';
 import routingConfig from './config.ts'
 
 
@@ -14,11 +14,10 @@ type RouteHandlerParams = [{ priority: number }?];
 
 export function RouteMatcher(
   target: RouteResolver,
-  propertyKey: string,
-  descriptor: PropertyDescriptor
+  propertyKey: string
 ) {
   const config = getRegisteredClass(target);
-  config!.activeRoutes.expression.push((target as any)[propertyKey] as RouteResolver);
+  config!.activeRoutes.push((target as any)[propertyKey] as RouteResolver);
 }
 
 export function RouteActivated(
@@ -31,8 +30,7 @@ export function RouteActivated(
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
     target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
+    propertyKey: string
   ) {
     const config = getRegisteredClass(target);
     config!.activate = {
@@ -107,18 +105,11 @@ export function GuardRouteEnter(
 
 
 export function RouteWatcher(config : RouteWatcherConfig) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    if(config.match || !('target' in (config.match as any))) { //it's an expression without config
-      const expression = config.match as RouteMatchExpression;
-      config.match = {
-        target : routingConfig.defaultMatchTarget,
-        expression : []
-      }
-      if (expression && (!Array.isArray(expression) || (expression as Array<any>).length)) {
-        const all = Array.isArray(expression) ? expression : [expression];
-        (config.match.expression as Array<any>).push(...(all || []));
-      }
+  return function (target: any, propertyKey: string, _: PropertyDescriptor) {
+    if (config.match && (!Array.isArray(config.match) || (config.match as Array<any>).length)) {
+      config.match =Array.isArray(config.match) ? config.match : [config.match];
     }
+    
     const classConfig = getRegisteredClass(target);
     if(config.on && !Array.isArray(config.on))
       config.on = [config.on];
@@ -137,7 +128,7 @@ export function GuardRouteLeave(
   return function (
     target: any,
     propertyKey: string,
-    descriptor: PropertyDescriptor
+    _: PropertyDescriptor
   ) {
     const config = getRegisteredClass(target);
 
@@ -149,26 +140,16 @@ export function GuardRouteLeave(
 }
 
 export function Routable(
-  arg?: RouteMatchExpression | RouteMatchConfig
+  arg?: RouteMatchExpression | RouteMatchExpression[]
 ): Function {
   return function (OriginalConstructor: any) {
-    const argIsConfig = typeof (arg as any).target === 'string';
     const config = getRegisteredClass(OriginalConstructor.prototype);
     config.class = OriginalConstructor.name;
 
-    const matchConfig : RouteMatchConfig =  argIsConfig
-      ? arg as RouteMatchConfig
-      : {
-        target : routingConfig.defaultMatchTarget,
-        expression : []
-      };
-
-    const expression = argIsConfig ? (arg as RouteMatchConfig).expression : arg as RouteMatchExpression
-    if (expression && (!Array.isArray(expression) || (expression as Array<any>).length)) {
-      const all = Array.isArray(expression) ? expression : [expression];
-      (matchConfig.expression as Array<any>).push(...(all || []));
+    if (arg && (!Array.isArray(arg) || (arg as Array<any>).length)) {
+      const all = Array.isArray(arg) ? arg : [arg];
+      (config.activeRoutes as Array<any>).push(...(all || []));
     }
-    config.activeRoutes = matchConfig;
 
     function newConstructor(...args: any[]) {
       const instance = new OriginalConstructor(...args);
