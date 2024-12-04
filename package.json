@@ -1,7 +1,10 @@
 {
   "name": "vue3-routable",
-  "version": "0.2.0",
-  "repository": "https://github.com/cleverplatypus/vue3-routable",
+  "version": "0.2.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cleverplatypus/vue3-routable.git"
+  },
   "description": "Small utility to annotate classes of objects to be activated/deactivated upon vue-router routes change ",
   "main": "src/index.ts",
   "author": "Nicola Dal Pont",
