@@ -41,10 +41,20 @@ export function RouteMatcher() {
     const config = getRegisteredClass(target, true);
     config!.routeMatcher = (target as any)[propertyKey] as RouteResolver;
   };
+/**
+ * @category Decorators
+ * @decorator
+ */
+export function RouteMatcher(
+  target: RouteResolver,
+  propertyKey: string
+) {
+  const config = getRegisteredClass(target, true);
+  config!.activeRoutes.push((target as any)[propertyKey] as RouteResolver);
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteActivated(
@@ -65,7 +75,7 @@ export function RouteActivated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteDeactivated(
@@ -90,7 +100,7 @@ export function RouteDeactivated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteUpdated(
@@ -115,7 +125,7 @@ export function RouteUpdated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function GuardRouteEnter(
@@ -139,11 +149,12 @@ export function GuardRouteEnter(
   };
 }
 
+
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
-export function RouteWatcher(config: RouteWatcherConfig) {
+export function RouteWatcher(config : RouteWatcherConfig) {
   return function (target: any, propertyKey: string, _: PropertyDescriptor) {
     if (
       config?.match &&
@@ -163,7 +174,7 @@ export function RouteWatcher(config: RouteWatcherConfig) {
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function GuardRouteLeave(
@@ -185,7 +196,7 @@ export function GuardRouteLeave(
 }
 
 /**
- * @category Decorators: Class
+ * @category Decorators
  * @decorator
  */
 export function Routable(
@@ -231,9 +242,8 @@ function getHandlerArgsMetadataDecorator(type: symbol, ...args: any[]) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
- * {@label PRECISION}
  */
 export function Param(name?: string) {
   return getHandlerArgsMetadataDecorator(
@@ -243,45 +253,33 @@ export function Param(name?: string) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
-export function To(propertyPath?: string) {
-  return getHandlerArgsMetadataDecorator(
-    TO_METADATA,
-    ...(propertyPath ? [propertyPath] : [])
-  );
+export function To(propertyPath?:string) {
+  return getHandlerArgsMetadataDecorator(TO_METADATA, ...(propertyPath ? [propertyPath] : []));
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
-export function From(propertyPath?: string) {
-  return getHandlerArgsMetadataDecorator(
-    FROM_METADATA,
-    ...(propertyPath ? [propertyPath] : [])
-  );
+export function From(propertyPath?:string) {
+  return getHandlerArgsMetadataDecorator(FROM_METADATA, ...(propertyPath ? [propertyPath] : []));
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
-export function Query(name?: string) {
-  return getHandlerArgsMetadataDecorator(
-    QUERY_METADATA,
-    ...(name ? [name] : [])
-  );
+export function Query(name?:string) {
+  return getHandlerArgsMetadataDecorator(QUERY_METADATA, ...(name ? [name] : []));
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
-export function Meta(config: MetaDecoratorArgs) {
-  return getHandlerArgsMetadataDecorator(
-    META_METADATA,
-    ...(config ? [config] : [])
-  );
+export function Meta(path?: string) {
+  return getHandlerArgsMetadataDecorator(META_METADATA, ...(path ? [path] : []));
 }

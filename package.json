@@ -10,7 +10,11 @@
   "author": "Nicola Dal Pont",
   "license": "MIT",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:jsdoc": "typedoc --out docs/api src"
   },
   "dependencies": {
     "@types/lodash.get": "^4.4.9",
@@ -31,13 +35,18 @@
     "@vue/compiler-sfc": "^3.5.13",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.4.0",
+    "cpx": "^1.5.0",
     "jsdom": "^25.0.1",
     "lodash.clonedeep": "^4.5.0",
     "lodash.isequal": "^4.5.0",
     "mini-signals": "^2.0.0",
     "ts-jest": "^29.1.1",
     "tsc": "^2.0.4",
+    "typedoc": "^0.27.2",
+    "typedoc-plugin-markdown": "^4.3.1",
     "typescript": "^5.1.6",
+    "vitepress": "^1.3.4",
+    "vitepress-jsdoc": "^1.0.4",
     "vitest": "^2.1.8",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
