@@ -1,17 +1,20 @@
 import { Routable, RouteActivated, RouteDeactivated } from "../src";
 
-@Routable('about')
+@Routable("about")
 export class TestControllerAbout {
-     isActive = false
-    @RouteActivated()
-    onRouteActivated() {
-        this.isActive = true
-    }
+  isActive = false;
+  redirectOnEnter: null | { name: string } = null;
 
-    @RouteDeactivated()
-    onRouteDeactivated() {
-        this.isActive = false;
-    }
+  @RouteActivated()
+  onRouteActivated() {
+    if (this.redirectOnEnter) return this.redirectOnEnter;
+    this.isActive = true;
+  }
+
+  @RouteDeactivated()
+  onRouteDeactivated() {
+    this.isActive = false;
+  }
 }
 
-export default new TestControllerAbout()
+export default new TestControllerAbout();
