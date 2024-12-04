@@ -220,7 +220,7 @@ function getHandlerParams(
   const metadata =
     getMetadata(
       HANDLER_ARGS_METADATA,
-      Object.getPrototypeOf(target),
+      target,
       methodName
     ) || [];
 
@@ -253,7 +253,7 @@ function getHandlerParams(
 function getGuards(to: RouteLocation, from: RouteLocation) {
   return Array.from(routeableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
-      const config = getRegisteredClass(Object.getPrototypeOf(routable));
+      const config = getRegisteredClass(routable);
       if (
         config.guardEnter &&
         routeMatches(toRouteBaseInfo(to), config.activeRoutes)
@@ -284,7 +284,7 @@ export function routableObjectIsActive(
   route: RouteLocation | RouteRecordRaw,
   routeableObject: any
 ): boolean {
-  const config = getRegisteredClass(Object.getPrototypeOf(routeableObject));
+  const config = getRegisteredClass(routeableObject);
   if (!config) return false;
 
   return routeChainMatches(toRouteBaseInfo(route), config.activeRoutes);
@@ -300,7 +300,7 @@ export function routableObjectIsActive(
 function getHandlers(to: RouteLocation, from: RouteLocation) {
   return Array.from(routeableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
-      const config = getRegisteredClass(Object.getPrototypeOf(routable));
+      const config = getRegisteredClass(routable);
       const matchesTo = routeChainMatches(toRouteBaseInfo(to), config.activeRoutes)
       const matchesFrom = routeChainMatches(toRouteBaseInfo(from), config.activeRoutes)
       if (
@@ -452,7 +452,7 @@ export function getActiveRoutablesConfigs(
 ): Array<{ config: RoutableConfig; target: any }> {
   const objs = Array.from(routeableObjects).map((obj) => ({
     target: obj,
-    config: getRegisteredClass(Object.getPrototypeOf(obj)),
+    config: getRegisteredClass(obj),
   }));
   return objs.filter(
     (obj) =>

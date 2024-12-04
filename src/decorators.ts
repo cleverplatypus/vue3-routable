@@ -16,7 +16,7 @@ export function RouteMatcher(
   target: RouteResolver,
   propertyKey: string
 ) {
-  const config = getRegisteredClass(target);
+  const config = getRegisteredClass(target, true);
   config!.activeRoutes.push((target as any)[propertyKey] as RouteResolver);
 }
 
@@ -32,7 +32,7 @@ export function RouteActivated(
     target: any,
     propertyKey: string
   ) {
-    const config = getRegisteredClass(target);
+    const config = getRegisteredClass(target, true);
     config!.activate = {
       priority,
       handler: propertyKey
@@ -53,7 +53,7 @@ export function RouteDeactivated(
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    const config = getRegisteredClass(target);
+    const config = getRegisteredClass(target, true);
     config!.deactivate = {
       priority,
       handler: propertyKey
@@ -74,7 +74,7 @@ export function RouteUpdated(
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    const config = getRegisteredClass(target);
+    const config = getRegisteredClass(target, true);
     config!.update = {
       priority,
       handler: propertyKey
@@ -95,7 +95,7 @@ export function GuardRouteEnter(
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    const config = getRegisteredClass(target);
+    const config = getRegisteredClass(target, true);
     config!.guardEnter = {
       priority,
       handler: propertyKey
@@ -110,7 +110,7 @@ export function RouteWatcher(config : RouteWatcherConfig) {
       config.match =Array.isArray(config.match) ? config.match : [config.match];
     }
     
-    const classConfig = getRegisteredClass(target);
+    const classConfig = getRegisteredClass(target, true);
     if(config.on && !Array.isArray(config.on))
       config.on = [config.on];
     classConfig.watchers.push(Object.assign({}, config, {handler : propertyKey}));
@@ -130,7 +130,7 @@ export function GuardRouteLeave(
     propertyKey: string,
     _: PropertyDescriptor
   ) {
-    const config = getRegisteredClass(target);
+    const config = getRegisteredClass(target, true);
 
     config!.guardLeave = {
       priority,
@@ -143,7 +143,7 @@ export function Routable(
   arg?: RouteMatchExpression | RouteMatchExpression[]
 ): Function {
   return function (OriginalConstructor: any) {
-    const config = getRegisteredClass(OriginalConstructor.prototype);
+    const config = getRegisteredClass(OriginalConstructor.prototype, true);
     config.class = OriginalConstructor.name;
 
     if (arg && (!Array.isArray(arg) || (arg as Array<any>).length)) {
