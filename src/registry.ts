@@ -27,6 +27,7 @@ export function getRegisteredClass(
     registeredClasses.set(obj[ROUTABLE_OBJECT_UUID], {
       activeRoutes: [],
       watchers: [],
+      instanceRouteMatchers: new WeakMap(),
     });
   }
   return registeredClasses.get(obj[ROUTABLE_OBJECT_UUID])!;

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
-import {
-  registerRouter,
-  routableObjectIsActive
-} from "../src/index";
+import { registerRouter, routableObjectIsActive } from "../src/index";
 import TestComponent from "./TestComponent.vue";
 import testControllerAbout from "./test-controller-about";
 import testControllerDeep from "./test-controller-deep";
 import testControllerGuarded from "./test-controller-guarded";
 import testControllerParams from "./test-controller-params";
 import testControllerUpdatable from "./test-controller-updatable";
+import testControllerMeta from "./test-controller-meta";
+import { multipleA, multipleB } from "./test-controller-multiple-instances";
 
 const routes = [
   {
@@ -18,9 +17,19 @@ const routes = [
     component: TestComponent,
   },
   {
-    path: '/redirect-destination',
-    name: 'redirect-destination',
-    component: TestComponent
+    path: "/multipleA",
+    name: "multipleA",
+    component: TestComponent,
+  },
+  {
+    path: "/multipleB",
+    name: "multipleB",
+    component: TestComponent,
+  },
+  {
+    path: "/redirect-destination",
+    name: "redirect-destination",
+    component: TestComponent,
   },
   {
     path: "/addable",
@@ -44,6 +53,23 @@ const routes = [
       meta1: "meta1-value",
     },
     component: TestComponent,
+  },
+  {
+    path: "/meta",
+    name: "meta",
+    component: TestComponent,
+    meta: {
+      meta1: "meta1-value",
+    },
+  },
+  {
+    path: "/meta1",
+    name: "meta1",
+    component: TestComponent,
+    meta: {
+      meta2: "meta2-value",
+      meta3: "meta3-value",
+    },
   },
   {
     path: "/deep",
@@ -94,13 +120,12 @@ describe("redirected_activation", () => {
   it("should_redirect_upon_activation", async () => {
     await router.push({ name: "home" });
     expect(testControllerAbout.isActive).toEqual(false);
-    testControllerAbout.redirectOnEnter = { name : 'redirect-destination'}
+    testControllerAbout.redirectOnEnter = { name: "redirect-destination" };
     await router.push({ name: "about" });
     expect(testControllerAbout.isActive).toEqual(false);
-    expect(router.currentRoute.value.name).toEqual('redirect-destination');
+    expect(router.currentRoute.value.name).toEqual("redirect-destination");
     testControllerAbout.redirectOnEnter = null; //prevent further tests on 'about' from being redirected
   });
-
 });
 
 describe("routableObjectIsActive", () => {
@@ -262,48 +287,93 @@ describe("annotated_methods_annotated_params", () => {
   });
 });
 
-describe('route_guards', () => {
-  it('route_enter_guard', async () => {
-    await router.push('/');
+describe("route_guards", () => {
+  it("route_enter_guard", async () => {
+    await router.push("/");
     expect(testControllerGuarded.isActive).toEqual(false);
     testControllerGuarded.shouldEnter = false;
     await router.push({
-      name : 'guarded'
+      name: "guarded",
     });
     expect(testControllerGuarded.isActive).toEqual(false);
     testControllerGuarded.shouldEnter = true;
     await router.push({
-      name : 'guarded'
+      name: "guarded",
     });
     expect(testControllerGuarded.isActive).toEqual(true);
-  })
+  });
 
-  it('route_exit_guard', async () => {
+  it("route_exit_guard", async () => {
     testControllerGuarded.shouldEnter = true;
     await router.push({
-      name : 'guarded'
+      name: "guarded",
     });
     expect(testControllerGuarded.isActive).toEqual(true);
     testControllerGuarded.shouldExit = false;
     await router.push({
-      name : 'home'
+      name: "home",
     });
     expect(testControllerGuarded.isActive).toEqual(true);
     testControllerGuarded.shouldExit = true;
     await router.push({
-      name : 'home'
+      name: "home",
     });
     expect(testControllerGuarded.isActive).toEqual(false);
-  })
+  });
 
-  it('route_enter_guard_redirect', async () => {
-    await router.push('/');
+  it("route_enter_guard_redirect", async () => {
+    await router.push("/");
     expect(testControllerGuarded.isActive).toEqual(false);
-    testControllerGuarded.redirectOnEnter = {name : 'redirect-destination'};
+    testControllerGuarded.redirectOnEnter = { name: "redirect-destination" };
     await router.push({
-      name : 'guarded'
+      name: "guarded",
     });
-    expect(router.currentRoute.value.name).toEqual('redirect-destination');
-  })
+    expect(router.currentRoute.value.name).toEqual("redirect-destination");
+  });
+});
 
-})
+describe("meta_param_decorator", () => {
+  it("route_meta_polymorphic_configuration", async () => {
+    await router.push("/");
+    expect(testControllerMeta.gatheredMeta).toEqual([]);
+    await router.push({ name: "meta" });
+    expect(testControllerMeta.gatheredMeta).toEqual([
+      "meta1-value",
+      null,
+      null,
+    ]);
+    testControllerMeta.gatheredMeta.length = 0;
+    await router.push({ name: "meta1" });
+    expect(testControllerMeta.gatheredMeta).toEqual([
+      null,
+      null,
+      "meta3-value",
+    ]);
+    testControllerMeta.gatheredMeta.length = 0;
+    await router.push({ name: "meta" });
+    expect(testControllerMeta.gatheredMeta).toEqual([
+      "meta1-value",
+      "meta2-value",
+      null,
+    ]);
+  });
+});
+
+describe("instance_route_matching", () => {
+  it("activates_deactivates_route_matcher_instances", async () => {
+    await router.push("/");
+    expect(multipleA.isActive).toEqual(false);
+    expect(multipleB.isActive).toEqual(false);
+    await router.push({ name: "multipleA" });
+    expect(multipleA.isActive).toEqual(true);
+    expect(multipleB.isActive).toEqual(false);
+
+    await router.push({ name: "multipleB" });
+    expect(multipleA.isActive).toEqual(false);
+    expect(multipleB.isActive).toEqual(true);
+
+    await router.push("/");
+    expect(multipleA.isActive).toEqual(false);
+    expect(multipleB.isActive).toEqual(false);
+  });
+});

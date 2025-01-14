@@ -1,9 +1,5 @@
 import get from "lodash.get";
-import type {
-  RouteLocation,
-  Router,
-  RouteRecordRaw
-} from "vue-router";
+import type { RouteLocation, Router, RouteRecordRaw } from "vue-router";
 import routingConfig from "./config.ts";
 import { getMetadata, getRegisteredClass, routeableObjects } from "./registry";
 import {
@@ -24,7 +20,7 @@ import type {
   RouteHandlerEventType,
   RouteMatchExpression,
   RouteMatchTarget,
-  RouteWatcherContext
+  RouteWatcherContext,
 } from "./types";
 
 type RoutableCallableConfig = {
@@ -185,7 +181,7 @@ function routeMatches(
   } else if (typeof expression === "string") {
     return expression === matchTarget;
   } else {
-    return (expression as Function)(matchTarget);
+    return (expression as Function)(route);
   }
 }
 
@@ -217,12 +213,7 @@ function getHandlerParams(
   to: RouteLocation,
   from: RouteLocation
 ): Array<any> {
-  const metadata =
-    getMetadata(
-      HANDLER_ARGS_METADATA,
-      target,
-      methodName
-    ) || [];
+  const metadata = getMetadata(HANDLER_ARGS_METADATA, target, methodName) || [];
 
   const params = metadata.map((param: HandlerParamMetadata) => {
     const { type, args } = param;
@@ -231,8 +222,16 @@ function getHandlerParams(
         return args.length ? to.params[args[0]] : to.params;
       case QUERY_METADATA:
         return args.length ? to.query[args[0]] : to.query;
-      case META_METADATA:
-        return args.length ? get(to.meta, args[0]) : to.meta;
+      case META_METADATA: {
+        const [direction, path] = args[0]
+          ? typeof args[0] === "string"
+            ? ["to", args[0]]
+            : [args[0].route || "", args[0].path]
+          : ["to", undefined];
+
+        const toFrom = { to, from }[direction as "to" | "from"];
+        return path ? get(toFrom.meta, args[0]) : toFrom.meta;
+      }
       case TO_METADATA:
         return args.length ? get(to, args[0]) : to;
       case FROM_METADATA:
@@ -280,6 +279,14 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
   );
 }
 
+/**
+ * Checks whether the passed routableObject is activate for the passed route
+ *
+ * @category Functions
+ * @param route the route to match against the object
+ * @param routeableObject the object to check
+ * @returns
+ */
 export function routableObjectIsActive(
   route: RouteLocation | RouteRecordRaw,
   routeableObject: any
@@ -301,29 +308,29 @@ function getHandlers(to: RouteLocation, from: RouteLocation) {
   return Array.from(routeableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(routable);
-      const matchesTo = routeChainMatches(toRouteBaseInfo(to), config.activeRoutes)
-      const matchesFrom = routeChainMatches(toRouteBaseInfo(from), config.activeRoutes)
-      if (
-        !matchesFrom &&
-        !matchesTo
-      )
-        return out;
+      const instanceMatchesTo =
+        config.instanceRouteMatchers.has(routable) &&
+        config.instanceRouteMatchers.get(routable)!(to);
+
+      const instanceMatchesFrom =
+        config.instanceRouteMatchers.has(routable) &&
+        config.instanceRouteMatchers.get(routable)!(from);
+
+      const matchesTo =
+        instanceMatchesTo ||
+        routeChainMatches(toRouteBaseInfo(to), config.activeRoutes);
+      const matchesFrom =
+        instanceMatchesFrom ||
+        routeChainMatches(toRouteBaseInfo(from), config.activeRoutes);
+      if (!matchesFrom && !matchesTo) return out;
       if (to.name !== from.name) {
-        if (
-          config.activate &&
-          matchesTo &&
-          !matchesFrom
-        ) {
+        if (config.activate && matchesTo && !matchesFrom) {
           out.push({
             config: config.activate,
             class: config.class!,
             target: routable,
           });
-        } else if (
-          config.deactivate &&
-          !matchesTo &&
-          matchesFrom
-        ) {
+        } else if (config.deactivate && !matchesTo && matchesFrom) {
           out.push({
             config: config.deactivate,
             class: config.class!,
