@@ -362,17 +362,42 @@ describe("meta_param_decorator", () => {
 describe("instance_route_matching", () => {
   it("activates_deactivates_route_matcher_instances", async () => {
     await router.push("/");
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleA)
+    ).toEqual(false);
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleB)
+    ).toEqual(false);
     expect(multipleA.isActive).toEqual(false);
     expect(multipleB.isActive).toEqual(false);
+
     await router.push({ name: "multipleA" });
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleA)
+    ).toEqual(true);
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleB)
+    ).toEqual(false);
     expect(multipleA.isActive).toEqual(true);
     expect(multipleB.isActive).toEqual(false);
 
     await router.push({ name: "multipleB" });
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleA)
+    ).toEqual(false);
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleB)
+    ).toEqual(true);
     expect(multipleA.isActive).toEqual(false);
     expect(multipleB.isActive).toEqual(true);
 
     await router.push("/");
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleA)
+    ).toEqual(false);
+    expect(
+      routableObjectIsActive(router.currentRoute.value, multipleB)
+    ).toEqual(false);
     expect(multipleA.isActive).toEqual(false);
     expect(multipleB.isActive).toEqual(false);
   });

@@ -294,7 +294,11 @@ export function routableObjectIsActive(
   const config = getRegisteredClass(routeableObject);
   if (!config) return false;
 
-  return routeChainMatches(toRouteBaseInfo(route), config.activeRoutes);
+  return (
+    routeChainMatches(toRouteBaseInfo(route), config.activeRoutes) ||
+    config.routeMatcher?.call(routeableObject, route as RouteLocation) ||
+    false
+  );
 }
 
 /**
@@ -310,11 +314,11 @@ function getHandlers(to: RouteLocation, from: RouteLocation) {
       const config = getRegisteredClass(routable);
       const instanceMatchesTo =
         config.instanceRouteMatchers.has(routable) &&
-        config.instanceRouteMatchers.get(routable)!(to);
+        config.instanceRouteMatchers.get(routable)!.call(routable, to);
 
       const instanceMatchesFrom =
         config.instanceRouteMatchers.has(routable) &&
-        config.instanceRouteMatchers.get(routable)!(from);
+        config.instanceRouteMatchers.get(routable)!.call(routable, from);
 
       const matchesTo =
         instanceMatchesTo ||

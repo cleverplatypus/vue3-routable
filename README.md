@@ -2,6 +2,8 @@
 
 ![Tests](https://github.com/cleverplatypus/vue3-routable/actions/workflows/test.yml/badge.svg)
 
+> DEPRECATED DOCS. A much better docs site will be made available soon.
+
 ## TL;DR
 
 You don't want to use VueX or Pinia? I hear ya! Use plain TypeScript decorated MVC controllers.
@@ -62,9 +64,10 @@ import {watch} from 'vue';
 export class ProductsListScreenController {
    #watchers = new Set<Function>();
     /**
-     * Another way to register for routes events
+     * Activation at the instance level.
+     * The method will be called **per instance**, so multiple instances of the class can be activated independently.
      */
-    @RouteMatcher
+    @RouteMatcher()
     decideWhetherToBeInvolved(route:RouteLocation):boolean {
         return !route.params.someReasonNotToGetInvolved;
     }
@@ -124,25 +127,25 @@ export default new ProductsListScreenController();//good idea for it to be a sin
 
 ```ts
 // @/controllers/session-controller
-import { Meta, Routable, GuardRouteEnter } from 'vue3-routable';
+import { Meta, Routable, GuardRouteEnter } from "vue3-routable";
 
 @Routable(/.*/)
 export class SessionController {
   @GuardRouteEnter({ priority: 1000 })
   async checkRole(
-    @Meta('noAuthRequired') noAuthRequired: boolean,
-    @Meta('requiredRole') requiredRole?: string
+    @Meta("noAuthRequired") noAuthRequired: boolean,
+    @Meta("requiredRole") requiredRole?: string
   ) {
     if (noAuthRequired) {
       return;
     }
 
     if (!this.isUserAuthenticated()) {
-      return { name: 'sign-in' };
+      return { name: "sign-in" };
     }
 
     if (requiredRole && !this.getUserRoles().includes(requiredRole)) {
-      return { name: 'home' };
+      return { name: "home" };
     }
   }
 
@@ -157,7 +160,7 @@ export default new SessionController();
 ```ts
 //@/router.ts (or @/router/index.ts)
 
-import { registerRouter } from 'vue3-routable';
+import { registerRouter } from "vue3-routable";
 
 //...
 const router = createRouter(routes);
@@ -166,9 +169,9 @@ registerRouter(router);
 
 ```ts
 //somewhere as early as @/main.ts
-import { registerRoutableClasses } from 'vue3-routable';
-import ProductsListScreenController from '@/controllers/products-list-screen-controller';
-import SessionController from '@/controllers/session-controller';
+import { registerRoutableClasses } from "vue3-routable";
+import ProductsListScreenController from "@/controllers/products-list-screen-controller";
+import SessionController from "@/controllers/session-controller";
 
 registerRoutableClasses(ProductsListScreenController, SessionController);
 ```
@@ -202,6 +205,7 @@ The `meta.pathName` property is used to match against the `@Routable` arguments.
 <br><br>
 
 ## Route Watchers
+
 `@RouteWatcher(config:RouteWatcherConfig)` can be used to observe route changes,
 
 The class still needs to be annotated with `@Routable(matcher)` but no further handlers/guards need to be declared.
@@ -209,38 +213,35 @@ The class still needs to be annotated with `@Routable(matcher)` but no further h
 Watchers are called if the routable class is active.
 
 ```ts
-type RouteHandlerEventType = 'enter' | 'leave' | 'update';
+type RouteHandlerEventType = "enter" | "leave" | "update";
 
 type RouteWatcherConfig = {
   priority?: number;
   match?: RouteMatchExpression;
-  on? : Array<RouteHandlerEventType> | RouteHandlerEventType;
-}
+  on?: Array<RouteHandlerEventType> | RouteHandlerEventType;
+};
 ```
+
 All watcher configuration parameters are optional. If none are set the watcher will be called every time a route changes and the `@Routable()` class matcher pattern matches.
 
 Parameters injectors can be used as usual.
 
-
-
 ```ts
-
 @Routable(/.*/)
 class Auditor {
-    @RouteWatcher({match : 'product-page', priority : 0})
-    productPageAuditor(@Param('productId') productId:string ) {
-        if(productId) //watchers are called both on enter/exit route
-            audit.productVisited(productId);
-    }
-    
-    @RouteWatcher({ match : 'help-page' })
-    helpPageSpy(@Query('topic-search') topicSearch:string) {
-        if(topicSearch) 
-            audit.addRequestedSearchTopic(searchTopic);
-    }
+  @RouteWatcher({ match: "product-page", priority: 0 })
+  productPageAuditor(@Param("productId") productId: string) {
+    if (productId)
+      //watchers are called both on enter/exit route
+      audit.productVisited(productId);
+  }
+
+  @RouteWatcher({ match: "help-page" })
+  helpPageSpy(@Query("topic-search") topicSearch: string) {
+    if (topicSearch) audit.addRequestedSearchTopic(searchTopic);
+  }
 }
 ```
-
 
 ## Parameter Injectors
 
@@ -286,7 +287,6 @@ beforeEnter(@Meta('requirements.user_privileges') privileges:Array<string>) {
 ```
 
 > To inject `query`, `param` and `meta` from the `from` route, use `@From('property.path')`
-
 
 ### `@To(path?:string)` and `@From(path?:string)`
 
