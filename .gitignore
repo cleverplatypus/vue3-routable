@@ -2,3 +2,4 @@ node_modules/
 start-jest.sh
 .nvmrc
 docs/.vitepress/cache
+yarn-error.log
