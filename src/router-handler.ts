@@ -1,7 +1,7 @@
-import get from "lodash.get";
-import type { RouteLocation, Router, RouteRecordRaw } from "vue-router";
-import routingConfig from "./config";
-import { getMetadata, getRegisteredClass, routeableObjects } from "./registry";
+import get from 'lodash.get';
+import type { RouteLocation, Router, RouteRecordRaw } from 'vue-router';
+import routingConfig from './config';
+import { getMetadata, getRegisteredClass, routeableObjects } from './registry';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -9,7 +9,7 @@ import {
   PARAM_METADATA,
   QUERY_METADATA,
   TO_METADATA,
-} from "./symbols";
+} from './symbols';
 import type {
   GuardConfig,
   HandlerParamMetadata,
@@ -20,18 +20,17 @@ import type {
   RouteMatchExpression,
   RouteMatchTarget,
   RouteWatcherContext,
-} from "./types";
+} from './types';
 
-const VIRTUAL_MODULE_ID = 'virtual:vue3-routable-manifest'
+const VIRTUAL_MODULE_ID = 'virtual:vue3-routable-manifest';
 
 type LazyRoutable = {
   match: RouteMatchExpression[];
   loader: () => any;
-  loaded: boolean
-}
+  loaded: boolean;
+};
 
 let lazyRoutableRegistry: LazyRoutable[];
-
 
 type RoutableCallableConfig = {
   target: any;
@@ -104,27 +103,32 @@ export function createRoutesLUT(router: Router): void {
  * @param to the route to check
  */
 async function lazyLoadRoutables(to: RouteLocation) {
-  if(!lazyRoutableRegistry) {
+  if (!lazyRoutableRegistry) {
     try {
       //@ts-ignore virtual module import can confuse typescript
       const mod = await import(VIRTUAL_MODULE_ID);
       lazyRoutableRegistry = mod.RoutableRegistry ?? [];
     } catch (e) {
       lazyRoutableRegistry = [];
-      console.debug('[vue3-routable] No lazyRoutableRegistry found. Lazy routes will not be loaded.');
+      console.debug(
+        '[vue3-routable] No lazyRoutableRegistry found. Lazy routes will not be loaded.'
+      );
     }
   }
-  
+
   const remainingRoutables: LazyRoutable[] = [];
-  
-  for(const lazyRoutable of lazyRoutableRegistry) {
-    if(!lazyRoutable.loaded && routeChainMatches(to as RouteBaseInfo, lazyRoutable.match)) {
+
+  for (const lazyRoutable of lazyRoutableRegistry) {
+    if (
+      !lazyRoutable.loaded &&
+      routeChainMatches(to as RouteBaseInfo, lazyRoutable.match)
+    ) {
       const loaded = await lazyRoutable.loader();
       lazyRoutable.loaded = true;
-    } else if(!lazyRoutable.loaded) {
+    } else if (!lazyRoutable.loaded) {
       remainingRoutables.push(lazyRoutable);
     }
-  }  
+  }
   lazyRoutableRegistry = remainingRoutables;
 }
 
@@ -179,13 +183,13 @@ function checkRouteHandlerReturnValue(val: any, clazz: string) {
     throwError();
   }
 
-  if (typeof val === "boolean") {
+  if (typeof val === 'boolean') {
     return val;
   }
 
   if (
-    typeof val === "object" &&
-    (val.hasOwnProperty("name") || val.hasOwnProperty("path"))
+    typeof val === 'object' &&
+    (val.hasOwnProperty('name') || val.hasOwnProperty('path'))
   ) {
     return val;
   }
@@ -207,17 +211,16 @@ export function routeMatches(
     return expression.some((subexp) => routeMatches(route, subexp));
   }
 
-  const targetPath: RouteMatchTarget =
-    routingConfig.defaultMatchTarget;
+  const targetPath: RouteMatchTarget = routingConfig.defaultMatchTarget;
 
   const matchTarget =
-    targetPath === "name-chain"
+    targetPath === 'name-chain'
       ? routesLUT.get(route.name as string)?.nameChain
       : get(route, targetPath);
 
   if ((expression as any) instanceof RegExp) {
     return (expression as RegExp).test(matchTarget as string);
-  } else if (typeof expression === "string") {
+  } else if (typeof expression === 'string') {
     return expression === matchTarget;
   } else {
     return (expression as Function)(route);
@@ -263,12 +266,12 @@ function getHandlerParams(
         return args.length ? to.query[args[0]] : to.query;
       case META_METADATA: {
         const [direction, path] = args[0]
-          ? typeof args[0] === "string"
-            ? ["to", args[0]]
-            : [args[0].route || "", args[0].path]
-          : ["to", undefined];
+          ? typeof args[0] === 'string'
+            ? ['to', args[0]]
+            : [args[0].route || '', args[0].path]
+          : ['to', undefined];
 
-        const toFrom = { to, from }[direction as "to" | "from"];
+        const toFrom = { to, from }[direction as 'to' | 'from'];
         return path ? get(toFrom.meta, args[0]) : toFrom.meta;
       }
       case TO_METADATA:
@@ -477,14 +480,14 @@ function watcherApplies(
   if (
     matchesTo &&
     to.name === from.name &&
-    (!contextOn || contextOn.includes("update"))
+    (!contextOn || contextOn.includes('update'))
   ) {
     return true;
   }
-  if (matchesTo && (!contextOn || contextOn?.includes("enter"))) {
+  if (matchesTo && (!contextOn || contextOn?.includes('enter'))) {
     return true;
   }
-  if (matchesFrom && (!contextOn || contextOn?.includes("leave"))) {
+  if (matchesFrom && (!contextOn || contextOn?.includes('leave'))) {
     return true;
   }
   return false;

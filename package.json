@@ -16,6 +16,10 @@
     "docs:preview": "vitepress preview docs",
     "docs:jsdoc": "typedoc --out docs/api src"
   },
+  "prettier" : {
+    "singleQuote": true,
+    "semi": true
+  },
   "dependencies": {
     "@types/lodash.get": "^4.4.9",
     "lodash.get": "^4.4.2"

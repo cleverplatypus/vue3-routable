@@ -1,7 +1,7 @@
-import type { Router } from "vue-router";
-import routingConfig from "./config.ts";
-import { createRoutesLUT, handleRouteChange } from "./router-handler.ts";
-import type { RoutingConfig } from "./types.ts";
+import type { Router } from 'vue-router';
+import routingConfig from './config';
+import { createRoutesLUT, handleRouteChange } from './router-handler';
+import type { RoutingConfig } from './types';
 
 /**
  * Registers the router with the library.
@@ -14,7 +14,7 @@ import type { RoutingConfig } from "./types.ts";
  */
 export function registerRouter(
   router: Router,
-  options: RoutingConfig = { defaultMatchTarget: "name" }
+  options: RoutingConfig = { defaultMatchTarget: 'name' }
 ): Router {
   const routes = router.getRoutes();
   Object.assign(routingConfig, options);
@@ -38,6 +38,7 @@ export function registerRoutableClasses(...classes: Array<any>) {
 export {
   routableObjectIsActive,
   routeMatches,
-  routeChainMatches} from './router-handler.ts'
+  routeChainMatches,
+} from './router-handler';
 
-export * from "./decorators.ts";
+export * from './decorators';

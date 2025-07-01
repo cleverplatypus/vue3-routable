@@ -1,5 +1,5 @@
-import { ROUTABLE_OBJECT_UUID } from "./symbols.ts";
-import type { MetadataType, RoutableConfig } from "./types.ts";
+import { ROUTABLE_OBJECT_UUID } from './symbols';
+import type { MetadataType, RoutableConfig } from './types';
 
 export const registeredClasses: Map<string, RoutableConfig> = new Map();
 export const routeableObjects = new Set<object>();

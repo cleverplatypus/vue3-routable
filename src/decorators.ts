@@ -3,7 +3,7 @@ import {
   getMetadata,
   getRegisteredClass,
   registerRoutableObject,
-} from "./registry.ts";
+} from './registry';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -11,14 +11,13 @@ import {
   PARAM_METADATA,
   QUERY_METADATA,
   TO_METADATA,
-} from "./symbols.ts";
+} from './symbols';
 import type {
   MetaDecoratorArgs,
   RouteMatchExpression,
   RouteResolver,
   RouteWatcherConfig,
-} from "./types.ts";
-import routingConfig from "./config.ts";
+} from './types';
 
 type PlainDecoratorSignature = [
   target: any,
@@ -41,16 +40,6 @@ export function RouteMatcher() {
     const config = getRegisteredClass(target, true);
     config!.routeMatcher = (target as any)[propertyKey] as RouteResolver;
   };
-/**
- * @category Decorators
- * @decorator
- */
-export function RouteMatcher(
-  target: RouteResolver,
-  propertyKey: string
-) {
-  const config = getRegisteredClass(target, true);
-  config!.activeRoutes.push((target as any)[propertyKey] as RouteResolver);
 }
 
 /**
@@ -62,7 +51,7 @@ export function RouteActivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteActivated decorator must be used with brackets: RouteActivated(config?)"
+      'RouteActivated decorator must be used with brackets: RouteActivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (target: any, propertyKey: string) {
@@ -83,7 +72,7 @@ export function RouteDeactivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)"
+      'RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -108,7 +97,7 @@ export function RouteUpdated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteUpdated decorator must be used with brackets: RouteUpdated(config?)"
+      'RouteUpdated decorator must be used with brackets: RouteUpdated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -133,7 +122,7 @@ export function GuardRouteEnter(
 ) {
   if (args.length === 3)
     throw new Error(
-      "GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)"
+      'GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -149,12 +138,11 @@ export function GuardRouteEnter(
   };
 }
 
-
 /**
  * @category Decorators
  * @decorator
  */
-export function RouteWatcher(config : RouteWatcherConfig) {
+export function RouteWatcher(config: RouteWatcherConfig) {
   return function (target: any, propertyKey: string, _: PropertyDescriptor) {
     if (
       config?.match &&
@@ -182,7 +170,7 @@ export function GuardRouteLeave(
 ) {
   if (args.length === 3)
     throw new Error(
-      "GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)"
+      'GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (target: any, propertyKey: string, _: PropertyDescriptor) {
@@ -256,24 +244,33 @@ export function Param(name?: string) {
  * @category Decorators
  * @decorator
  */
-export function To(propertyPath?:string) {
-  return getHandlerArgsMetadataDecorator(TO_METADATA, ...(propertyPath ? [propertyPath] : []));
+export function To(propertyPath?: string) {
+  return getHandlerArgsMetadataDecorator(
+    TO_METADATA,
+    ...(propertyPath ? [propertyPath] : [])
+  );
 }
 
 /**
  * @category Decorators
  * @decorator
  */
-export function From(propertyPath?:string) {
-  return getHandlerArgsMetadataDecorator(FROM_METADATA, ...(propertyPath ? [propertyPath] : []));
+export function From(propertyPath?: string) {
+  return getHandlerArgsMetadataDecorator(
+    FROM_METADATA,
+    ...(propertyPath ? [propertyPath] : [])
+  );
 }
 
 /**
  * @category Decorators
  * @decorator
  */
-export function Query(name?:string) {
-  return getHandlerArgsMetadataDecorator(QUERY_METADATA, ...(name ? [name] : []));
+export function Query(name?: string) {
+  return getHandlerArgsMetadataDecorator(
+    QUERY_METADATA,
+    ...(name ? [name] : [])
+  );
 }
 
 /**
@@ -281,5 +278,8 @@ export function Query(name?:string) {
  * @decorator
  */
 export function Meta(path?: string) {
-  return getHandlerArgsMetadataDecorator(META_METADATA, ...(path ? [path] : []));
+  return getHandlerArgsMetadataDecorator(
+    META_METADATA,
+    ...(path ? [path] : [])
+  );
 }
