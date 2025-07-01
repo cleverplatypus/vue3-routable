@@ -1,6 +1,6 @@
 import get from "lodash.get";
 import type { RouteLocation, Router, RouteRecordRaw } from "vue-router";
-import routingConfig from "./config.ts";
+import routingConfig from "./config";
 import { getMetadata, getRegisteredClass, routeableObjects } from "./registry";
 import {
   FROM_METADATA,
@@ -13,7 +13,6 @@ import {
 import type {
   GuardConfig,
   HandlerParamMetadata,
-  QualifiedMatchExpression,
   RoutableConfig,
   RouteBaseInfo,
   RouteChangeHandlerConfig,
@@ -22,6 +21,17 @@ import type {
   RouteMatchTarget,
   RouteWatcherContext,
 } from "./types";
+
+const VIRTUAL_MODULE_ID = 'virtual:vue3-routable-manifest'
+
+type LazyRoutable = {
+  match: RouteMatchExpression[];
+  loader: () => any;
+  loaded: boolean
+}
+
+let lazyRoutableRegistry: LazyRoutable[];
+
 
 type RoutableCallableConfig = {
   target: any;
@@ -90,6 +100,35 @@ export function createRoutesLUT(router: Router): void {
 }
 
 /**
+ * Lazy loads any routes that match the given route.
+ * @param to the route to check
+ */
+async function lazyLoadRoutables(to: RouteLocation) {
+  if(!lazyRoutableRegistry) {
+    try {
+      //@ts-ignore virtual module import can confuse typescript
+      const mod = await import(VIRTUAL_MODULE_ID);
+      lazyRoutableRegistry = mod.RoutableRegistry ?? [];
+    } catch (e) {
+      lazyRoutableRegistry = [];
+      console.debug('[vue3-routable] No lazyRoutableRegistry found. Lazy routes will not be loaded.');
+    }
+  }
+  
+  const remainingRoutables: LazyRoutable[] = [];
+  
+  for(const lazyRoutable of lazyRoutableRegistry) {
+    if(!lazyRoutable.loaded && routeChainMatches(to as RouteBaseInfo, lazyRoutable.match)) {
+      const loaded = await lazyRoutable.loader();
+      lazyRoutable.loaded = true;
+    } else if(!lazyRoutable.loaded) {
+      remainingRoutables.push(lazyRoutable);
+    }
+  }  
+  lazyRoutableRegistry = remainingRoutables;
+}
+
+/**
  * Handles a route change.
  * Any configured Guards, Handlers and Watchers are executed in priority order.
  * This function is passed to the router's beforeEach hook.
@@ -102,6 +141,7 @@ export async function handleRouteChange(
   to: RouteLocation,
   from: RouteLocation
 ): Promise<any> {
+  await lazyLoadRoutables(to);
   const guards = getGuards(to, from);
   const handlers = getHandlers(to, from);
 
@@ -159,7 +199,7 @@ function checkRouteHandlerReturnValue(val: any, clazz: string) {
  * @param {RouteMatchExpression} expression - The route match expression to compare against.
  * @return {boolean} - Returns true if the route matches any of the expressions, otherwise returns false.
  */
-function routeMatches(
+export function routeMatches(
   route: RouteBaseInfo,
   expression: RouteMatchExpression | RouteMatchExpression[]
 ): boolean {
@@ -168,7 +208,6 @@ function routeMatches(
   }
 
   const targetPath: RouteMatchTarget =
-    (expression as QualifiedMatchExpression<any>).target ??
     routingConfig.defaultMatchTarget;
 
   const matchTarget =
@@ -185,7 +224,7 @@ function routeMatches(
   }
 }
 
-function routeChainMatches(
+export function routeChainMatches(
   route: RouteBaseInfo,
   expression: RouteMatchExpression | RouteMatchExpression[]
 ): boolean {

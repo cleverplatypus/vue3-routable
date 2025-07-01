@@ -70,14 +70,7 @@ export type RouteResolver = (route: RouteLocation) => boolean;
 
 export type RouteMatchTarget = "name" | "name-chain" | "path" | string;
 
-export type QualifiedMatchExpression<T> = {
-  target?: RouteMatchTarget;
-  strict?: boolean;
-  expression: T;
-};
-
 export type RouteMatchExpression =
-  | QualifiedMatchExpression<string | RegExp>
   | string
   | RegExp
   | RouteResolver;
