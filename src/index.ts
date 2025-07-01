@@ -35,8 +35,9 @@ export function registerRoutableClasses(...classes: Array<any>) {
   for (const clazz of classes) clazz.prototype; //just poke the class in order to be loaded
 }
 
-export { INNER_ROUTABLE_OBJECT } from "./symbols.ts";
-
-export { routableObjectIsActive } from "./router-handler.ts";
+export {
+  routableObjectIsActive,
+  routeMatches,
+  routeChainMatches} from './router-handler.ts'
 
 export * from "./decorators.ts";
