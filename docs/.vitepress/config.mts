@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Vue3 Routable",
   description: "Clean, decorator-based MVC routing for Vue 3 applications",
+  base: '/vue3-routable/',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
