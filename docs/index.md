@@ -41,15 +41,18 @@ Most Vue applications end up with one of these common patterns:
 
 Vue3 Routable introduces a lightweight, decorator-based approach that:
 - Keeps it simple - Use plain TypeScript classes with intuitive decorators
-- Stays close to Vue Router - Works seamlessly with existing router configurations
+- Stays close to natural Vue3 and TypeScript development - Works seamlessly with existing router configurations. No additional constructs to learn.
 - Scales naturally - From simple route handlers to complex lazy-loaded controllers
 
 ```typescript
+import { Routable, RouteActivated, RouteDeactivated, Param } from 'vue3-routable'
+import productModel from '@/models/product-model'
+
 @Routable('/products/:id')
 class ProductController {
   @RouteActivated()
   async loadProduct(@Param('id') productId: string) {
-    this.product = await fetchProduct(productId);
+    productModel.data = await fetchProduct(productId);
   }
 
   @RouteDeactivated()

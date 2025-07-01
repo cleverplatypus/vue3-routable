@@ -42,9 +42,7 @@ export default defineConfig({
       {
         text: 'Reference',
         items: [
-          { text: 'API Documentation', link: '/api/globals' },
-          { text: 'Best Practices', link: '/guide#best-practices' },
-          { text: 'Common Patterns', link: '/guide#common-patterns' }
+          { text: 'API Documentation', link: '/api/globals' }
         ]
       }
     ],
