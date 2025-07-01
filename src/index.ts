@@ -14,7 +14,7 @@ import type { RoutingConfig } from './types';
  */
 export function registerRouter(
   router: Router,
-  options: RoutingConfig = { defaultMatchTarget: 'name' }
+  options: RoutingConfig = { defaultMatchTarget: 'name', routeNameChainSeparator: '.'}
 ): Router {
   const routes = router.getRoutes();
   Object.assign(routingConfig, options);
