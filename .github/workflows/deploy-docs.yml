@@ -19,13 +19,13 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn
 
       - name: Run JSDoc
-        run: npm run docs:jsdoc
+        run: yarn docs:jsdoc
 
       - name: Build VitePress site
-        run: npm run docs:build
+        run: yarn docs:build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
