@@ -114,14 +114,18 @@ async function lazyLoadRoutables(to: RouteLocation) {
       console.debug('[vue3-routable] No lazyRoutableRegistry found. Lazy routes will not be loaded.');
     }
   }
+  
+  const remainingRoutables: LazyRoutable[] = [];
+  
   for(const lazyRoutable of lazyRoutableRegistry) {
     if(!lazyRoutable.loaded && routeChainMatches(to as RouteBaseInfo, lazyRoutable.match)) {
       const loaded = await lazyRoutable.loader();
       lazyRoutable.loaded = true;
+    } else if(!lazyRoutable.loaded) {
+      remainingRoutables.push(lazyRoutable);
     }
-  }
-  // remove any routes that have been loaded for performance
-  lazyRoutableRegistry = lazyRoutableRegistry.filter((r) => !r.loaded);
+  }  
+  lazyRoutableRegistry = remainingRoutables;
 }
 
 /**
