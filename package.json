@@ -10,10 +10,7 @@
   "author": "Nicola Dal Pont",
   "license": "MIT",
   "scripts": {
-    "test": "vitest",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "test": "vitest"
   },
   "dependencies": {
     "@types/lodash.get": "^4.4.9",
@@ -41,7 +38,6 @@
     "ts-jest": "^29.1.1",
     "tsc": "^2.0.4",
     "typescript": "^5.1.6",
-    "vitepress": "^1.3.4",
     "vitest": "^2.1.8",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
