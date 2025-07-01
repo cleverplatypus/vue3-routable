@@ -22,7 +22,7 @@ export default defineConfig({
     }
   ],
   test: {
-    environment: "jsdom", // Ensure JSDOM environment is used for Vue components
-    globals: true, // Enable global APIs like describe and it
+    environment: "jsdom",
+    globals: true,
   },
 });

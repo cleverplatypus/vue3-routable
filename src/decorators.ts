@@ -3,7 +3,7 @@ import {
   getMetadata,
   getRegisteredClass,
   registerRoutableObject,
-} from "./registry.ts";
+} from './registry';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -11,14 +11,13 @@ import {
   PARAM_METADATA,
   QUERY_METADATA,
   TO_METADATA,
-} from "./symbols.ts";
+} from './symbols';
 import type {
   MetaDecoratorArgs,
   RouteMatchExpression,
   RouteResolver,
   RouteWatcherConfig,
-} from "./types.ts";
-import routingConfig from "./config.ts";
+} from './types';
 
 type PlainDecoratorSignature = [
   target: any,
@@ -44,7 +43,7 @@ export function RouteMatcher() {
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteActivated(
@@ -52,7 +51,7 @@ export function RouteActivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteActivated decorator must be used with brackets: RouteActivated(config?)"
+      'RouteActivated decorator must be used with brackets: RouteActivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (target: any, propertyKey: string) {
@@ -65,7 +64,7 @@ export function RouteActivated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteDeactivated(
@@ -73,7 +72,7 @@ export function RouteDeactivated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)"
+      'RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -90,7 +89,7 @@ export function RouteDeactivated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteUpdated(
@@ -98,7 +97,7 @@ export function RouteUpdated(
 ) {
   if (args.length === 3)
     throw new Error(
-      "RouteUpdated decorator must be used with brackets: RouteUpdated(config?)"
+      'RouteUpdated decorator must be used with brackets: RouteUpdated(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -115,7 +114,7 @@ export function RouteUpdated(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function GuardRouteEnter(
@@ -123,7 +122,7 @@ export function GuardRouteEnter(
 ) {
   if (args.length === 3)
     throw new Error(
-      "GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)"
+      'GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (
@@ -140,7 +139,7 @@ export function GuardRouteEnter(
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function RouteWatcher(config: RouteWatcherConfig) {
@@ -163,7 +162,7 @@ export function RouteWatcher(config: RouteWatcherConfig) {
 }
 
 /**
- * @category Decorators: Method
+ * @category Decorators
  * @decorator
  */
 export function GuardRouteLeave(
@@ -171,7 +170,7 @@ export function GuardRouteLeave(
 ) {
   if (args.length === 3)
     throw new Error(
-      "GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)"
+      'GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)'
     );
   const priority = (args as RouteHandlerParams)[0]?.priority || 0;
   return function (target: any, propertyKey: string, _: PropertyDescriptor) {
@@ -185,7 +184,7 @@ export function GuardRouteLeave(
 }
 
 /**
- * @category Decorators: Class
+ * @category Decorators
  * @decorator
  */
 export function Routable(
@@ -231,9 +230,8 @@ function getHandlerArgsMetadataDecorator(type: symbol, ...args: any[]) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
- * {@label PRECISION}
  */
 export function Param(name?: string) {
   return getHandlerArgsMetadataDecorator(
@@ -243,7 +241,7 @@ export function Param(name?: string) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
 export function To(propertyPath?: string) {
@@ -254,7 +252,7 @@ export function To(propertyPath?: string) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
 export function From(propertyPath?: string) {
@@ -265,7 +263,7 @@ export function From(propertyPath?: string) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
 export function Query(name?: string) {
@@ -276,12 +274,12 @@ export function Query(name?: string) {
 }
 
 /**
- * @category Decorators: Parameter
+ * @category Decorators
  * @decorator
  */
-export function Meta(config: MetaDecoratorArgs) {
+export function Meta(path?: string) {
   return getHandlerArgsMetadataDecorator(
     META_METADATA,
-    ...(config ? [config] : [])
+    ...(path ? [path] : [])
   );
 }

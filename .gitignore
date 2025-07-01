@@ -1,3 +1,8 @@
 node_modules/
 start-jest.sh
 .nvmrc
+yarn-error.log
+docs/.vitepress/cache
+docs/.vitepress/dist
+docs/.vitepress/.temp
+docs/api

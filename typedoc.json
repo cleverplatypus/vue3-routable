@@ -1,0 +1,7 @@
+{
+    "entryPoints": ["src/index.ts"], 
+    "out": "docs/.vitepress/api",
+    "plugin": ["typedoc-plugin-markdown"],
+    "theme": "markdown"
+  }
+  

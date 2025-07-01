@@ -1,4 +1,4 @@
-import type { RouteLocation, RouteRecordRaw } from "vue-router";
+import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -6,7 +6,7 @@ import {
   PARAM_METADATA,
   QUERY_METADATA,
   TO_METADATA,
-} from "./symbols";
+} from './symbols';
 
 type RequireAtLeastOneParameter<T> = {
   [K in keyof T]-?: Pick<T, K> & Partial<Omit<T, K>>;
@@ -14,7 +14,7 @@ type RequireAtLeastOneParameter<T> = {
 
 export type MethodName = string;
 
-export type RouteHandlerEventType = "enter" | "leave" | "update";
+export type RouteHandlerEventType = 'enter' | 'leave' | 'update';
 
 export type RouteChangeHandlerConfig = {
   handler: MethodName;
@@ -68,12 +68,9 @@ export type RouteChangeHandler = (
  */
 export type RouteResolver = (route: RouteLocation) => boolean;
 
-export type RouteMatchTarget = "name" | "name-chain" | "path" | string;
+export type RouteMatchTarget = 'name' | 'name-chain' | 'path' | string;
 
-export type RouteMatchExpression =
-  | string
-  | RegExp
-  | RouteResolver;
+export type RouteMatchExpression = string | RegExp | RouteResolver;
 
 export type RouteWatcherConfig = RequireAtLeastOneParameter<{
   priority?: number;
@@ -102,4 +99,4 @@ export type RoutableConfig = {
 
 export type MetaDecoratorArgs =
   | string
-  | RequireAtLeastOneParameter<{ path?: string; route?: "from" | "to" }>;
+  | RequireAtLeastOneParameter<{ path?: string; route?: 'from' | 'to' }>;
