@@ -22,7 +22,10 @@ import type {
   RouteWatcherContext,
 } from './types';
 
-const VIRTUAL_MODULE_ID = 'virtual:vue3-routable-manifest';
+// DevTools integration - using global reference to avoid circular dependency
+declare global {
+  var __VUE_ROUTABLE_DEVTOOLS_EMITTER__: any;
+}
 
 type LazyRoutable = {
   match: RouteMatchExpression[];
@@ -106,7 +109,7 @@ async function lazyLoadRoutables(to: RouteLocation) {
   if (!lazyRoutableRegistry) {
     try {
       //@ts-ignore virtual module import can confuse typescript
-      const mod = await import(VIRTUAL_MODULE_ID);
+      const mod = await import('virtual:vue3-routable-manifest');
       lazyRoutableRegistry = mod.RoutableRegistry ?? [];
     } catch (e) {
       lazyRoutableRegistry = [];
@@ -422,6 +425,15 @@ async function processGuards(
   from: RouteLocation
 ) {
   for (const guard of guards) {
+    // Emit DevTools timeline event for guard execution
+    if (globalThis.__VUE_ROUTABLE_DEVTOOLS_EMITTER__) {
+      globalThis.__VUE_ROUTABLE_DEVTOOLS_EMITTER__.onHookCalled(guard.target, `Guard: ${guard.config.handler}`, {
+        type: 'guard',
+        route: to.path,
+        from: from.path
+      });
+    }
+
     const outcome = checkRouteHandlerReturnValue(
       await guard.target[guard.config.handler](
         ...getHandlerParams(guard.config.handler, guard.target, to, from)

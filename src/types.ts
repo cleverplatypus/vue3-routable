@@ -85,6 +85,7 @@ export type RouteWatcherContext = RouteWatcherConfig & {
 };
 
 export type RoutableConfig = {
+  devToolsLabel?: string;
   activeRoutes: RouteMatchExpression[];
   routeMatcher?: RouteResolver;
   instanceRouteMatchers: WeakMap<any, RouteResolver>;

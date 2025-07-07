@@ -42,3 +42,5 @@ export {
 } from './router-handler';
 
 export * from './decorators';
+
+export {enableRoutableDevtools, devToolsEventEmitter} from './devtools/devtools-plugin';

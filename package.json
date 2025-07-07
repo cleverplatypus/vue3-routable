@@ -1,6 +1,6 @@
 {
   "name": "vue3-routable",
-  "version": "0.3.0",
+  "version": "1.0.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cleverplatypus/vue3-routable.git"
@@ -16,12 +16,13 @@
     "docs:preview": "vitepress preview docs",
     "docs:jsdoc": "typedoc --out docs/api src"
   },
-  "prettier" : {
+  "prettier": {
     "singleQuote": true,
     "semi": true
   },
   "dependencies": {
     "@types/lodash.get": "^4.4.9",
+    "@vue/devtools-api": "^7.7.7",
     "lodash.get": "^4.4.2"
   },
   "peerDependencies": {
