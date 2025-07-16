@@ -48,7 +48,7 @@ Vue3 Routable introduces a lightweight, decorator-based approach that:
 import { Routable, RouteActivated, RouteDeactivated, Param } from 'vue3-routable'
 import productModel from '@/models/product-model'
 
-@Routable('/products/:id')
+@Routable(/\/products\/\d+/')
 class ProductController {
   @RouteActivated()
   async loadProduct(@Param('id') productId: string) {
