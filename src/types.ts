@@ -22,6 +22,12 @@ export type RouteChangeHandlerConfig = {
   class?: string;
 };
 
+export type RouteTargetedMatchExpression = {
+  expression: RouteMatchExpression | RouteMatchExpression[]
+  target?: RouteMatchTarget;
+}
+  
+
 export type RouteBaseInfo = {
   name: string;
   path: string;
@@ -86,6 +92,7 @@ export type RouteWatcherContext = RouteWatcherConfig & {
 
 export type RoutableConfig = {
   activeRoutes: RouteMatchExpression[];
+  matchTarget?: RouteMatchTarget;
   routeMatcher?: RouteResolver;
   instanceRouteMatchers: WeakMap<any, RouteResolver>;
   activate?: RouteChangeHandlerConfig;

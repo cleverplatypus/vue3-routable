@@ -19,6 +19,7 @@ import type {
   RouteHandlerEventType,
   RouteMatchExpression,
   RouteMatchTarget,
+  RouteTargetedMatchExpression,
   RouteWatcherContext,
 } from './types';
 
@@ -28,6 +29,7 @@ type LazyRoutable = {
   match: RouteMatchExpression[];
   loader: () => any;
   loaded: boolean;
+  matchTarget?: RouteMatchTarget;
 };
 
 let lazyRoutableRegistry: LazyRoutable[];
@@ -121,7 +123,10 @@ async function lazyLoadRoutables(to: RouteLocation) {
   for (const lazyRoutable of lazyRoutableRegistry) {
     if (
       !lazyRoutable.loaded &&
-      routeChainMatches(to as RouteBaseInfo, lazyRoutable.match)
+      routeChainMatches(to as RouteBaseInfo, {
+        expression : lazyRoutable.match,
+        target: lazyRoutable.matchTarget || routingConfig.defaultMatchTarget,
+      })
     ) {
       const loaded = await lazyRoutable.loader();
       lazyRoutable.loaded = true;
@@ -196,6 +201,19 @@ function checkRouteHandlerReturnValue(val: any, clazz: string) {
 
   throwError();
 }
+
+/**
+ * Converts a route pattern with parameters (e.g., /product/:id) to a RegExp
+ * @param pattern - The route pattern string
+ * @returns RegExp that matches the pattern
+ */
+function createRoutePatternRegex(pattern: string): RegExp {
+  const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regexPattern = escapedPattern.replace(/:([^/]+)/g, '([^/]+)');
+
+  return new RegExp(`^${regexPattern}$`);
+}
+
 /**
  * Checks if the given route matches the provided route match expression(s).
  *
@@ -205,37 +223,67 @@ function checkRouteHandlerReturnValue(val: any, clazz: string) {
  */
 export function routeMatches(
   route: RouteBaseInfo,
-  expression: RouteMatchExpression | RouteMatchExpression[]
+  targetedExpression: RouteTargetedMatchExpression
 ): boolean {
+  const { expression, target } = targetedExpression;
+  const matchTarget = target || routingConfig.defaultMatchTarget;
   if (Array.isArray(expression)) {
-    return expression.some((subexp) => routeMatches(route, subexp));
+    return expression.some((subexp) => routeMatches(route, {
+      expression : subexp, 
+      target: matchTarget
+    }));
   }
 
-  const targetPath: RouteMatchTarget = routingConfig.defaultMatchTarget;
-
-  const matchTarget =
-    targetPath === 'name-chain'
+  
+  const matchTargetValue =
+    matchTarget === 'name-chain'
       ? routesLUT.get(route.name as string)?.nameChain
-      : get(route, targetPath);
+      : get(route, matchTarget);
 
+  // Handle RegExp expressions
   if ((expression as any) instanceof RegExp) {
-    return (expression as RegExp).test(matchTarget as string);
-  } else if (typeof expression === 'string') {
-    return expression === matchTarget;
-  } else {
+    return (expression as RegExp).test(matchTargetValue as string);
+  }
+
+  // Handle function expressions
+  if (typeof expression === 'function') {
     return (expression as Function)(route);
   }
+
+  // Handle string expressions
+  if (typeof expression !== 'string') {
+    return false;
+  }
+
+  // Check for dynamic route patterns when matching against path
+  const isDynamicPattern = expression.includes(':');
+  const isMatchingPath = matchTarget === 'path';
+
+  if (isDynamicPattern && isMatchingPath) {
+    try {
+      const regex = createRoutePatternRegex(expression);
+      return regex.test(matchTargetValue as string);
+    } catch (error) {
+      console.warn(
+        '[vue3-routable] Failed to create route pattern regex, falling back to simple string matching:',
+        error
+      );
+    }
+  }
+
+  // Default to simple string matching
+  return expression === matchTargetValue;
 }
 
 export function routeChainMatches(
   route: RouteBaseInfo,
-  expression: RouteMatchExpression | RouteMatchExpression[]
+  targetedExpression: RouteTargetedMatchExpression
 ): boolean {
   return (
     !!route.name &&
     !!routesLUT
       .get(route.name as string)!
-      .matched.find((r) => routeMatches(r, expression))
+      .matched.find((r) => routeMatches({...r, path: route.path}, targetedExpression))
   );
 }
 
@@ -297,8 +345,10 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
       const config = getRegisteredClass(routable);
       if (
         config.guardEnter &&
-        routeMatches(toRouteBaseInfo(to), config.activeRoutes)
-      ) {
+        routeMatches(toRouteBaseInfo(to), {
+          expression : config.activeRoutes,
+          target: config.matchTarget,
+      })) {
         out.push({
           config: config.guardEnter,
           class: config.class!,
@@ -307,8 +357,10 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
       }
       if (
         config.guardLeave &&
-        routeMatches(toRouteBaseInfo(from), config.activeRoutes)
-      ) {
+        routeMatches(toRouteBaseInfo(from), {
+          expression : config.activeRoutes,
+          target: config.matchTarget
+      })) {
         out.push({
           config: config.guardLeave,
           class: config.class!,
@@ -337,7 +389,10 @@ export function routableObjectIsActive(
   if (!config) return false;
 
   return (
-    routeChainMatches(toRouteBaseInfo(route), config.activeRoutes) ||
+    routeChainMatches(toRouteBaseInfo(route), {
+      expression: config.activeRoutes,
+      target: config.matchTarget,
+    }) ||
     config.routeMatcher?.call(routeableObject, route as RouteLocation) ||
     false
   );
@@ -364,10 +419,16 @@ function getHandlers(to: RouteLocation, from: RouteLocation) {
 
       const matchesTo =
         instanceMatchesTo ||
-        routeChainMatches(toRouteBaseInfo(to), config.activeRoutes);
+        routeChainMatches(toRouteBaseInfo(to), {
+          expression: config.activeRoutes,
+          target: config.matchTarget
+        });
       const matchesFrom =
         instanceMatchesFrom ||
-        routeChainMatches(toRouteBaseInfo(from), config.activeRoutes);
+        routeChainMatches(toRouteBaseInfo(from), {
+          expression: config.activeRoutes,
+          target: config.matchTarget
+        });
       if (!matchesFrom && !matchesTo) return out;
       if (to.name !== from.name) {
         if (config.activate && matchesTo && !matchesFrom) {
@@ -473,9 +534,15 @@ function watcherApplies(
 ) {
   const contextOn = context.on as RouteHandlerEventType[];
   const matchesTo =
-    !context.match || routeMatches(toRouteBaseInfo(to), context.match);
+    !context.match || routeMatches(toRouteBaseInfo(to), {
+      expression: context.match,
+      target: context.target
+    });
   const matchesFrom =
-    !context.match || routeMatches(toRouteBaseInfo(from), context.match);
+    !context.match || routeMatches(toRouteBaseInfo(from), {
+      expression: context.match,
+      target: context.target
+    });
 
   if (
     matchesTo &&
@@ -509,8 +576,14 @@ export function getActiveRoutablesConfigs(
   }));
   return objs.filter(
     (obj) =>
-      routeChainMatches(toRouteBaseInfo(to), obj.config.activeRoutes) ||
-      routeChainMatches(toRouteBaseInfo(from), obj.config.activeRoutes)
+      routeChainMatches(toRouteBaseInfo(to), {
+        expression: obj.config.activeRoutes,
+        target: obj.config.matchTarget
+      }) ||
+      routeChainMatches(toRouteBaseInfo(from), {
+        expression: obj.config.activeRoutes,
+        target: obj.config.matchTarget
+      })
   );
 }
 

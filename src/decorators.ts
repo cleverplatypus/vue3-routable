@@ -15,6 +15,7 @@ import {
 import type {
   MetaDecoratorArgs,
   RouteMatchExpression,
+  RouteMatchTarget,
   RouteResolver,
   RouteWatcherConfig,
 } from './types';
@@ -188,11 +189,13 @@ export function GuardRouteLeave(
  * @decorator
  */
 export function Routable(
-  arg?: RouteMatchExpression | RouteMatchExpression[]
+  arg?: RouteMatchExpression | RouteMatchExpression[],
+  target?: RouteMatchTarget
 ): Function {
   return function (OriginalConstructor: any) {
     const config = getRegisteredClass(OriginalConstructor.prototype, true);
     config.class = OriginalConstructor.name;
+    config.matchTarget = target
 
     if (arg && (!Array.isArray(arg) || (arg as Array<any>).length)) {
       const all = Array.isArray(arg) ? arg : [arg];

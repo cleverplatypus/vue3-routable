@@ -1,13 +1,11 @@
 import { Routable, RouteActivated, RouteDeactivated } from "../src";
 
-@Routable("/about", 'path')
-export class TestControllerAbout {
+@Routable("deep.nested2.nested3", 'name-chain')
+export class TestControllerNamedChain {
   isActive = false;
-  redirectOnEnter: null | { name: string } = null;
 
   @RouteActivated()
   onRouteActivated() {
-    if (this.redirectOnEnter) return this.redirectOnEnter;
     this.isActive = true;
   }
 
@@ -17,4 +15,4 @@ export class TestControllerAbout {
   }
 }
 
-export default new TestControllerAbout();
+export default new TestControllerNamedChain();
