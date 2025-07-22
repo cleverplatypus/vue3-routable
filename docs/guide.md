@@ -22,20 +22,20 @@ pnpm add vue3-routable
 
 :::
 
-Optionally install the lazy loading vite plugin for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
+Optionally install the [lazy loading vite plugin](https://www.npmjs.com/package/vue3-routable-lazy-loader) for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
 
 ::: code-group
 
 ```bash [npm]
-npm install vue3-routable-lazy-loader
+npm install --D vue3-routable-lazy-loader
 ```
 
 ```bash [yarn]
-yarn add vue3-routable-lazy-loader
+yarn add --dev vue3-routable-lazy-loader
 ```
 
 ```bash [pnpm]
-pnpm add vue3-routable-lazy-loader
+pnpm add --save-dev vue3-routable-lazy-loader
 ```
 
 :::
