@@ -13,6 +13,7 @@ import testControllerAboutPath from './test-controller-about-path';
 import testControllerProduct from './test-controller-product';
 import testControllerProductOptions from './test-controller-product-options';
 import testControllerNameChain from './test-controller-name-chain';
+import test from 'node:test';
 
 const routes = [
   {
@@ -111,6 +112,30 @@ const routes = [
       },
     ],
   },
+  {
+    path: '/chain-deep',
+    name: 'chain-deep',
+    component: TestComponent,
+    children: [
+      {
+        path: 'nested1',
+        name: 'chain-nested1',
+        component: TestComponent,
+      },
+      {
+        path: 'nested2',
+        name: 'chain-nested2',
+        component: TestComponent,
+        children: [
+          {
+            path: 'nested3',
+            name: 'chain-nested3',
+            component: TestComponent,
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 describe.sequential('vue3-routable', () => {
@@ -142,7 +167,7 @@ describe.sequential('vue3-routable', () => {
     describe('named_chain_activation', () => {
       it('should_activate_named_chain_controller', async () => {
         expect(testControllerNameChain.isActive).toEqual(false);
-        await routeNameRouter.push({ name: 'nested3' });
+        await routeNameRouter.push({ name: 'chain-nested3' });
         expect(testControllerNameChain.isActive).toEqual(true);
       });
 
@@ -221,6 +246,7 @@ describe.sequential('vue3-routable', () => {
 
     describe('nested_routes_and_watcher', () => {
       it('route_activated_only_on_exact_hit', async () => {
+        
         expect(testControllerDeep.activationHitsCount).toEqual(0);
         await routeNameRouter.push({
           name: 'deep',

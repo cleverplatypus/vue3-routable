@@ -1,6 +1,6 @@
 import { Routable, RouteActivated, RouteDeactivated } from "../src";
 
-@Routable("deep.nested2.nested3", 'name-chain')
+@Routable("chain-deep.chain-nested2.chain-nested3", 'name-chain')
 export class TestControllerNamedChain {
   isActive = false;
 
