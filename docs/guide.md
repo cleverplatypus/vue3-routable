@@ -55,16 +55,23 @@ Vue3 Routable requires TypeScript with experimental decorators enabled. Add this
 
 ## Quick Start
 
-### 1. Register the Router
+### 1. Create the app scope
 
-First, register your Vue Router instance with Vue3 Routable in your main application file:
+Create a fresh routable scope alongside your Vue app. That keeps controller instances local to the current app creation, which is safe for SSR and still works fine in client-only apps.
+
+<Badge type="tip" text="Since v1.1.0" />
+
+This scoped API, including `createRoutableScope(...)`, `defineRoutable(...)`, and `useRoutable(...)`, is part of the `v1.1.0` release line.
+
+For a full SSR app-factory example, including request-scoped reactive state and lazy loading, see [SSR Usage](/ssr).
 
 ```typescript
 // main.ts
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { registerRouter } from 'vue3-routable'
+import { createRoutableScope } from 'vue3-routable'
 import App from './App.vue'
+import { productController } from '@/controllers/product-controller'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -74,10 +81,12 @@ const router = createRouter({
   ]
 })
 
-// Register the router with Vue3 Routable
-registerRouter(router)
+const routableScope = createRoutableScope({
+  router,
+  routables: [productController],
+})
 
-createApp(App).use(router).mount('#app')
+createApp(App).use(router).use(routableScope).mount('#app')
 ```
 
 ### 2. Create your models and controllers
@@ -85,11 +94,21 @@ createApp(App).use(router).mount('#app')
 Controllers are in charge of the business logic for a specific route. 
 Models contain the data for the business logic and provide reactivity for the view.
 
+Avoid `export default new ProductController()` in SSR applications. Export either the class itself or a `defineRoutable(...)` registration so each app/request gets a fresh instance.
+
+The model below is module-scoped for brevity. In SSR, make reactive models request-scoped too; the dedicated [SSR Usage](/ssr) page shows both a controller-owned state pattern and a separate model factory pattern.
+
 ::: code-group
 
 ```typescript [product-controller.ts]
 // controllers/product-controller.ts
-import { Routable, RouteActivated, RouteDeactivated, Param } from 'vue3-routable'
+import {
+  Routable,
+  RouteActivated,
+  RouteDeactivated,
+  Param,
+  defineRoutable,
+} from 'vue3-routable'
 import productModel, {resetModel} from '@/models/product'
 
 @Routable('/products/:id')
@@ -105,7 +124,8 @@ export class ProductController {
     resetModel()
   }
 }
-export default new ProductController()
+
+export const productController = defineRoutable(ProductController)
 ```
 
 ```typescript [product-model.ts]
@@ -134,7 +154,7 @@ export function resetModel() {
 ### 3. Expose the reactive data to your component
 
 Expose the reactive data to your component by importing the model.
-As soon as the route is activated, the controller will load the data and update the model.
+As soon as the route is activated, the controller will load the data and update the model. If the component needs to call controller methods directly, you can inject the scoped instance too.
 ```vue
 <!-- ProductDetailView.vue -->
 <template>
@@ -145,11 +165,21 @@ As soon as the route is activated, the controller will load the data and update 
 </template>
 
 <script setup lang="ts">
+import { inject } from 'vue'
 
 import productModel from '@/models/product-model'
+import { productController } from '@/controllers/product-controller'
+
+const controller = inject(productController.key)
 
 </script>
 ```
+
+<Badge type="tip" text="Since v1.1.0" /> If your controller has no constructor arguments, you can skip `defineRoutable(...)`, register the class directly in `createRoutableScope({ routables: [ProductController] })`, and consume it with `useRoutable(ProductController)`.
+
+For client-only SPAs, the legacy `registerRouter(router)` plus module-level singleton instances still works, but the scoped setup above is the SSR-safe default.
+
+If you are rendering on the server, also avoid module-level reactive models, caches, and service objects that hold request-specific data.
 
 ## Core Concepts
 
@@ -389,6 +419,10 @@ export default defineConfig({
 The plugin will automatically register the routable classes annotated with `@Routable` and will lazy load them when needed.
 You won't need to call `registerRoutableClasses` for those.
 
+<Badge type="tip" text="Since v1.1.0" /> The scope-aware lazy registration path described below works with the `v1.1.0` scoped runtime.
+
+Lazy loading only decides when a module is imported. In SSR, still create controller instances inside `createRoutableScope(...)` and avoid exporting singleton controller instances from the lazy-loaded module.
+
 There are situations where annotating the class is not viable. For instance, a class can be instantitated multiple times for different routes, each with different parameters. In this case, you can export the `ROUTABLE_TARGETS` constant that instructs the lazy-loading plugin when to load the file.
 
 In the following example a generic ListController is instantiated for multiple routes and its specifics is driven by the `source` property.
@@ -419,16 +453,25 @@ export default class ListController {
 ```
 
 ```typescript [customers-list-controller.ts]
+import { defineRoutable } from 'vue3-routable'
+import ListController from './list-controller'
+
 export const ROUTABLE_TARGETS = ['customers-list'];
 
-export default new ListController({
-  targetRoutes: ROUTABLE_TARGETS,
-  source: 'customers'
-})
+export const customersListController = defineRoutable(
+  'customers-list-controller',
+  () =>
+    new ListController({
+      targetRoutes: ROUTABLE_TARGETS,
+      source: 'customers',
+    })
+)
 ```
 :::
 
+Register `customersListController` in the scope you create for the current app or SSR request.
+
 ## What's Next?
 
-- Explore the [API Reference](/api/globals) for detailed documentation
+- Explore the [API Reference](/api/) for detailed documentation
 - Join the discussion on [GitHub Discussions](https://github.com/cleverplatypus/vue3-routable/discussions)

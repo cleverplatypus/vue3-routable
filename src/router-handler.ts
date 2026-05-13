@@ -1,7 +1,7 @@
 import get from 'lodash.get';
 import type { RouteLocation, Router, RouteRecordRaw } from 'vue-router';
-import routingConfig from './config';
-import { getMetadata, getRegisteredClass, routeableObjects } from './registry';
+import { getMetadata, getRegisteredClass } from './registry';
+import { defaultRoutableRuntime } from './runtime';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -14,6 +14,7 @@ import type {
   GuardConfig,
   HandlerParamMetadata,
   RoutableConfig,
+  RoutableRuntime,
   RouteBaseInfo,
   RouteChangeHandlerConfig,
   RouteHandlerEventType,
@@ -47,13 +48,7 @@ type RoutableCallableConfig = {
  * @param {Array<RouteRecordNormalized>} routes - The array of routes.
  * @param {string} [parentPath=''] - The parent path string.
  */
-export const routesLUT = new Map<
-  string,
-  {
-    nameChain: string; // the chained route names separated by `nameSeparator`
-    matched: RouteBaseInfo[]; // the chain of routes ordered from top route up
-  }
->();
+export const routesLUT = defaultRoutableRuntime.routesLUT;
 
 function toRouteBaseInfo(route: any): RouteBaseInfo {
   return {
@@ -63,7 +58,12 @@ function toRouteBaseInfo(route: any): RouteBaseInfo {
   };
 }
 
-export function createRoutesLUT(router: Router): void {
+export function createRoutesLUT(
+  router: Router,
+  runtime: RoutableRuntime = defaultRoutableRuntime
+): void {
+  runtime.routesLUT.clear();
+
   const traverseRoutes = (
     routes: readonly RouteRecordRaw[],
     parentChain: RouteBaseInfo[] = []
@@ -81,9 +81,9 @@ export function createRoutesLUT(router: Router): void {
 
       if (route.name) {
         const nameChain = namesInChain.join(
-          routingConfig.routeNameChainSeparator
+          runtime.config.routeNameChainSeparator
         );
-        routesLUT.set(String(route.name), {
+        runtime.routesLUT.set(String(route.name), {
           nameChain,
           matched: currentChain,
         });
@@ -104,37 +104,45 @@ export function createRoutesLUT(router: Router): void {
  * Lazy loads any routes that match the given route.
  * @param to the route to check
  */
-async function lazyLoadRoutables(to: RouteLocation) {
-  if (!lazyRoutableRegistry) {
+async function lazyLoadRoutables(
+  to: RouteLocation,
+  runtime: RoutableRuntime = defaultRoutableRuntime
+) {
+  if (!runtime.lazyRoutableRegistry) {
     try {
       //@ts-ignore virtual module import can confuse typescript
       const mod = await import(VIRTUAL_MODULE_ID);
-      lazyRoutableRegistry = mod.RoutableRegistry ?? [];
+      runtime.lazyRoutableRegistry = (mod.RoutableRegistry ?? []).map(
+        (entry: LazyRoutable) => ({ ...entry })
+      );
     } catch (e) {
-      lazyRoutableRegistry = [];
+      runtime.lazyRoutableRegistry = [];
       console.debug(
         '[vue3-routable] No lazyRoutableRegistry found. Lazy routes will not be loaded.'
       );
     }
   }
 
+  const lazyRegistry = runtime.lazyRoutableRegistry || [];
+
   const remainingRoutables: LazyRoutable[] = [];
 
-  for (const lazyRoutable of lazyRoutableRegistry) {
+  for (const lazyRoutable of lazyRegistry) {
     if (
       !lazyRoutable.loaded &&
       routeChainMatches(to as RouteBaseInfo, {
         expression : lazyRoutable.match,
-        target: lazyRoutable.matchTarget || routingConfig.defaultMatchTarget,
-      })
+        target: lazyRoutable.matchTarget || runtime.config.defaultMatchTarget,
+      }, runtime)
     ) {
       const loaded = await lazyRoutable.loader();
+      await runtime.onLazyRoutableModuleLoaded?.(loaded);
       lazyRoutable.loaded = true;
     } else if (!lazyRoutable.loaded) {
       remainingRoutables.push(lazyRoutable);
     }
   }
-  lazyRoutableRegistry = remainingRoutables;
+  runtime.lazyRoutableRegistry = remainingRoutables;
 }
 
 /**
@@ -148,11 +156,12 @@ async function lazyLoadRoutables(to: RouteLocation) {
  */
 export async function handleRouteChange(
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime = defaultRoutableRuntime
 ): Promise<any> {
-  await lazyLoadRoutables(to);
-  const guards = getGuards(to, from);
-  const handlers = getHandlers(to, from);
+  await lazyLoadRoutables(to, runtime);
+  const guards = getGuards(to, from, runtime);
+  const handlers = getHandlers(to, from, runtime);
 
   sortGuardsAndHandlers(guards, handlers);
 
@@ -163,7 +172,7 @@ export async function handleRouteChange(
     handlerOutcome = await processHandlers(handlers, to, from);
   }
 
-  await processWatchers(to, from);
+  await processWatchers(to, from, runtime);
   return guardOutcome === true ? handlerOutcome : guardOutcome;
 }
 
@@ -223,21 +232,22 @@ function createRoutePatternRegex(pattern: string): RegExp {
  */
 export function routeMatches(
   route: RouteBaseInfo,
-  targetedExpression: RouteTargetedMatchExpression
+  targetedExpression: RouteTargetedMatchExpression,
+  runtime: RoutableRuntime = defaultRoutableRuntime
 ): boolean {
   const { expression, target } = targetedExpression;
-  const matchTarget = target || routingConfig.defaultMatchTarget;
+  const matchTarget = target || runtime.config.defaultMatchTarget;
   if (Array.isArray(expression)) {
     return expression.some((subexp) => routeMatches(route, {
       expression : subexp, 
       target: matchTarget
-    }));
+    }, runtime));
   }
 
   
   const matchTargetValue =
     matchTarget === 'name-chain'
-      ? routesLUT.get(route.name as string)?.nameChain
+      ? runtime.routesLUT.get(route.name as string)?.nameChain
       : get(route, matchTarget);
 
   // Handle RegExp expressions
@@ -277,13 +287,15 @@ export function routeMatches(
 
 export function routeChainMatches(
   route: RouteBaseInfo,
-  targetedExpression: RouteTargetedMatchExpression
+  targetedExpression: RouteTargetedMatchExpression,
+  runtime: RoutableRuntime = defaultRoutableRuntime
 ): boolean {
-  return (
-    !!route.name &&
-    !!routesLUT
-      .get(route.name as string)!
-      .matched.find((r) => routeMatches({...r, path: route.path}, targetedExpression))
+  const routeEntry = route.name
+    ? runtime.routesLUT.get(route.name as string)
+    : undefined;
+
+  return !!routeEntry?.matched.find((currentRoute) =>
+    routeMatches({ ...currentRoute, path: route.path }, targetedExpression, runtime)
   );
 }
 
@@ -339,8 +351,12 @@ function getHandlerParams(
  * @param {RouteLocation} from - The current route location.
  * @return {Array<RoutableCallableConfig>} An array of `RoutableCallableConfig` objects representing the guards.
  */
-function getGuards(to: RouteLocation, from: RouteLocation) {
-  return Array.from(routeableObjects).reduce(
+function getGuards(
+  to: RouteLocation,
+  from: RouteLocation,
+  runtime: RoutableRuntime
+) {
+  return Array.from(runtime.routableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(routable);
       if (
@@ -348,7 +364,7 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
         routeMatches(toRouteBaseInfo(to), {
           expression : config.activeRoutes,
           target: config.matchTarget,
-      })) {
+      }, runtime)) {
         out.push({
           config: config.guardEnter,
           class: config.class!,
@@ -360,7 +376,7 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
         routeMatches(toRouteBaseInfo(from), {
           expression : config.activeRoutes,
           target: config.matchTarget
-      })) {
+      }, runtime)) {
         out.push({
           config: config.guardLeave,
           class: config.class!,
@@ -383,7 +399,8 @@ function getGuards(to: RouteLocation, from: RouteLocation) {
  */
 export function routableObjectIsActive(
   route: RouteLocation | RouteRecordRaw,
-  routeableObject: any
+  routeableObject: any,
+  runtime: RoutableRuntime = defaultRoutableRuntime
 ): boolean {
   const config = getRegisteredClass(routeableObject);
   if (!config) return false;
@@ -392,7 +409,7 @@ export function routableObjectIsActive(
     routeChainMatches(toRouteBaseInfo(route), {
       expression: config.activeRoutes,
       target: config.matchTarget,
-    }) ||
+    }, runtime) ||
     config.routeMatcher?.call(routeableObject, route as RouteLocation) ||
     false
   );
@@ -405,8 +422,12 @@ export function routableObjectIsActive(
  * @param {RouteLocation} from - The source route location object.
  * @return {Array<RoutableCallableConfig>} - An array of RoutableCallableConfig objects representing the handlers for the route transition.
  */
-function getHandlers(to: RouteLocation, from: RouteLocation) {
-  return Array.from(routeableObjects).reduce(
+function getHandlers(
+  to: RouteLocation,
+  from: RouteLocation,
+  runtime: RoutableRuntime
+) {
+  return Array.from(runtime.routableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(routable);
       const instanceMatchesTo =
@@ -422,13 +443,13 @@ function getHandlers(to: RouteLocation, from: RouteLocation) {
         routeChainMatches(toRouteBaseInfo(to), {
           expression: config.activeRoutes,
           target: config.matchTarget
-        });
+        }, runtime);
       const matchesFrom =
         instanceMatchesFrom ||
         routeChainMatches(toRouteBaseInfo(from), {
           expression: config.activeRoutes,
           target: config.matchTarget
-        });
+        }, runtime);
       if (!matchesFrom && !matchesTo) return out;
       if (to.name !== from.name) {
         if (config.activate && matchesTo && !matchesFrom) {
@@ -530,19 +551,20 @@ async function processHandlers(
 function watcherApplies(
   context: RouteWatcherContext,
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime
 ) {
   const contextOn = context.on as RouteHandlerEventType[];
   const matchesTo =
     !context.match || routeMatches(toRouteBaseInfo(to), {
       expression: context.match,
       target: context.target
-    });
+    }, runtime);
   const matchesFrom =
     !context.match || routeMatches(toRouteBaseInfo(from), {
       expression: context.match,
       target: context.target
-    });
+    }, runtime);
 
   if (
     matchesTo &&
@@ -568,9 +590,10 @@ function watcherApplies(
  */
 export function getActiveRoutablesConfigs(
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime = defaultRoutableRuntime
 ): Array<{ config: RoutableConfig; target: any }> {
-  const objs = Array.from(routeableObjects).map((obj) => ({
+  const objs = Array.from(runtime.routableObjects).map((obj) => ({
     target: obj,
     config: getRegisteredClass(obj),
   }));
@@ -579,11 +602,11 @@ export function getActiveRoutablesConfigs(
       routeChainMatches(toRouteBaseInfo(to), {
         expression: obj.config.activeRoutes,
         target: obj.config.matchTarget
-      }) ||
+      }, runtime) ||
       routeChainMatches(toRouteBaseInfo(from), {
         expression: obj.config.activeRoutes,
         target: obj.config.matchTarget
-      })
+      }, runtime)
   );
 }
 
@@ -596,9 +619,10 @@ export function getActiveRoutablesConfigs(
  */
 function getPrioritisedActiveWatchers(
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime
 ): Array<RouteWatcherContext> {
-  const out = getActiveRoutablesConfigs(to, from).flatMap(
+  const out = getActiveRoutablesConfigs(to, from, runtime).flatMap(
     (curr) =>
       curr.config.watchers?.map((watcherConfig: RouteWatcherContext) => ({
         ...watcherConfig,
@@ -607,7 +631,7 @@ function getPrioritisedActiveWatchers(
   );
 
   return out
-    .filter((context) => watcherApplies(context, to, from))
+    .filter((context) => watcherApplies(context, to, from, runtime))
     .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 }
 
@@ -635,8 +659,12 @@ async function processWatcher(
  * @param {RouteLocation} to - The destination route location.
  * @param {RouteLocation} from - The source route location.
  */
-async function processWatchers(to: RouteLocation, from: RouteLocation) {
-  const watchers = getPrioritisedActiveWatchers(to, from);
+async function processWatchers(
+  to: RouteLocation,
+  from: RouteLocation,
+  runtime: RoutableRuntime
+) {
+  const watchers = getPrioritisedActiveWatchers(to, from, runtime);
   for (const watcher of watchers) {
     await processWatcher(watcher, to, from);
   }

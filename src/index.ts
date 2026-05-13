@@ -1,6 +1,7 @@
 import type { Router } from 'vue-router';
-import routingConfig from './config';
-import { createRoutesLUT, handleRouteChange } from './router-handler';
+import { createRoutingConfig } from './config';
+import { bindRouterToRoutableRuntime } from './router-registration';
+import { defaultRoutableRuntime } from './runtime';
 import type { RoutingConfig } from './types';
 
 /**
@@ -14,14 +15,9 @@ import type { RoutingConfig } from './types';
  */
 export function registerRouter(
   router: Router,
-  options: RoutingConfig = { defaultMatchTarget: 'name', routeNameChainSeparator: '.'}
+  options: RoutingConfig = createRoutingConfig()
 ): Router {
-  const routes = router.getRoutes();
-  Object.assign(routingConfig, options);
-  createRoutesLUT(router);
-
-  router.beforeEach(handleRouteChange);
-  return router;
+  return bindRouterToRoutableRuntime(router, defaultRoutableRuntime, options);
 }
 
 /**
@@ -42,3 +38,4 @@ export {
 } from './router-handler';
 
 export * from './decorators';
+export * from './scope';

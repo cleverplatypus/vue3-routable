@@ -1,6 +1,6 @@
 {
   "name": "vue3-routable",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cleverplatypus/vue3-routable.git"
@@ -14,7 +14,7 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "docs:jsdoc": "typedoc --out docs/api src"
+    "docs:jsdoc": "typedoc && cp docs/api/README.md docs/api/index.md"
   },
   "prettier" : {
     "singleQuote": true,

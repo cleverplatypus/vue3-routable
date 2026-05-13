@@ -1,4 +1,5 @@
-import type { RouteLocation, RouteRecordRaw } from 'vue-router';
+import type { InjectionKey } from 'vue';
+import type { RouteLocation, RouteRecordRaw, Router } from 'vue-router';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
@@ -56,6 +57,49 @@ export type HandlerParamMetadata = {
 export type RoutingConfig = {
   defaultMatchTarget: RouteMatchTarget;
   routeNameChainSeparator?: string;
+};
+
+export type RoutesLookupEntry = {
+  nameChain: string;
+  matched: RouteBaseInfo[];
+};
+
+export type RoutesLookupTable = Map<string, RoutesLookupEntry>;
+
+export type RoutableRuntime = {
+  config: RoutingConfig;
+  routesLUT: RoutesLookupTable;
+  routableObjects: Set<object>;
+  lazyRoutableRegistry?: Array<any>;
+  onLazyRoutableModuleLoaded?: (loadedModule: Record<string, any>) => void | Promise<void>;
+};
+
+export type RoutableClass<T extends object = any> = new (...args: any[]) => T;
+
+export type RoutableFactory<T extends object = any> = () => T;
+
+export type RoutableDefinition<T extends object = any> = {
+  key: InjectionKey<T>;
+  create: RoutableFactory<T>;
+  label: string;
+  source?: RoutableClass<T>;
+};
+
+export type RoutableRegistration<T extends object = any> =
+  | RoutableClass<T>
+  | RoutableDefinition<T>;
+
+export type RoutableContainer = {
+  runtime: RoutableRuntime;
+  get<T extends object>(target: RoutableRegistration<T>): T;
+  has<T extends object>(target: RoutableRegistration<T>): boolean;
+  register(...targets: RoutableRegistration<any>[]): void;
+};
+
+export type CreateRoutableScopeOptions = {
+  router: Router;
+  routing?: Partial<RoutingConfig>;
+  routables: RoutableRegistration<any>[];
 };
 
 export type GuardConfig = {

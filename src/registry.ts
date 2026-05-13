@@ -4,6 +4,8 @@ import type { MetadataType, RoutableConfig } from './types';
 export const registeredClasses: Map<string, RoutableConfig> = new Map();
 export const routeableObjects = new Set<object>();
 
+let activeRoutableRegistry: Set<object> | undefined;
+
 const metadata = new Map<MetadataType, Map<string, Map<string, any>>>();
 
 function setObjectRoutableUUID(obj: any) {
@@ -33,8 +35,29 @@ export function getRegisteredClass(
   return registeredClasses.get(obj[ROUTABLE_OBJECT_UUID])!;
 }
 
+export function hasRegisteredClass(obj: any): boolean {
+  if (!obj) return false;
+
+  setObjectRoutableUUID(obj);
+  return registeredClasses.has(obj[ROUTABLE_OBJECT_UUID]);
+}
+
 export function registerRoutableObject(object: Object) {
-  routeableObjects.add(object);
+  (activeRoutableRegistry || routeableObjects).add(object);
+}
+
+export function withRoutableObjectRegistry<T>(
+  registry: Set<object>,
+  callback: () => T
+): T {
+  const previousRegistry = activeRoutableRegistry;
+  activeRoutableRegistry = registry;
+
+  try {
+    return callback();
+  } finally {
+    activeRoutableRegistry = previousRegistry;
+  }
 }
 
 export function defineMetadata(

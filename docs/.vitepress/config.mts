@@ -10,7 +10,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide' },
-      { text: 'API Reference', link: '/api/globals' }
+      { text: 'SSR', link: '/ssr' },
+      { text: 'API Reference', link: '/api/' }
     ],
     logo: 'images/logo.svg',
     
@@ -20,7 +21,8 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/guide' },
           { text: 'Installation', link: '/guide#installation' },
-          { text: 'Quick Start', link: '/guide#quick-start' }
+          { text: 'Quick Start', link: '/guide#quick-start' },
+          { text: 'SSR Usage', link: '/ssr' }
         ]
       },
       {
@@ -35,14 +37,14 @@ export default defineConfig({
       {
         text: 'Advanced',
         items: [
-          { text: 'Custom Matching', link: '/guide#custom-route-matching' },
+          { text: 'Matching Target', link: '/guide#configuring-matching-target' },
           { text: 'Lazy Loading', link: '/guide#lazy-loading' }
         ]
       },
       {
         text: 'Reference',
         items: [
-          { text: 'API Documentation', link: '/api/globals' }
+          { text: 'API Documentation', link: '/api/' }
         ]
       }
     ],
