@@ -22,20 +22,22 @@ pnpm add vue3-routable
 
 :::
 
-Optionally install the [lazy loading vite plugin](https://www.npmjs.com/package/vue3-routable-lazy-loader) for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
+Optionally install the [lazy loading vite plugin](https://www.npmjs.com/package/vue3-routable-vite-plugin) for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
+
+<Badge type="tip" text="Since v1.1.0" /> Install `vue3-routable-vite-plugin` for the active plugin release line. The legacy `vue3-routable-lazy-loader` package should be treated as deprecated in favor of the renamed package.
 
 ::: code-group
 
 ```bash [npm]
-npm install --D vue3-routable-lazy-loader
+npm install --D vue3-routable-vite-plugin
 ```
 
 ```bash [yarn]
-yarn add --dev vue3-routable-lazy-loader
+yarn add --dev vue3-routable-vite-plugin
 ```
 
 ```bash [pnpm]
-pnpm add --save-dev vue3-routable-lazy-loader
+pnpm add --save-dev vue3-routable-vite-plugin
 ```
 
 :::
@@ -404,17 +406,19 @@ import { registerRoutableClasses } from 'vue3-routable'
 registerRoutableClasses(ProductController, ProductDetailController)
 ```
 
-You can include the `vue3-routable-lazy-loader` vite plugin to lazy load your routables.
+You can include the `vue3-routable-vite-plugin` package to lazy load your routables.
 
 ```typescript
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { vue3RoutableLazyLoader } from 'vue3-routable-lazy-loader'
+import { vue3RoutableVitePlugin } from 'vue3-routable-vite-plugin'
 
 export default defineConfig({
-  plugins: [vue(), vue3RoutableLazyLoader()],
+  plugins: [vue(), vue3RoutableVitePlugin()],
 })
 ```
+
+The renamed package still exports `vue3RoutableLazyLoader` and `vue3RoutablePlugin` as compatibility aliases if you want to keep the old symbol names in application code during migration.
 
 The plugin will automatically register the routable classes annotated with `@Routable` and will lazy load them when needed.
 You won't need to call `registerRoutableClasses` for those.

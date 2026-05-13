@@ -211,7 +211,7 @@ export const customersListController = defineRoutable(
 )
 ```
 
-When a route matches, `vue3-routable-lazy-loader` imports the module and Vue3 Routable registers the exported classes or `defineRoutable(...)` definitions into the active scope.
+When a route matches, `vue3-routable-vite-plugin` imports the module and Vue3 Routable registers the exported classes or `defineRoutable(...)` definitions into the active scope.
 
 ## Client-only applications
 

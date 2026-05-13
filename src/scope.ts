@@ -1,4 +1,11 @@
-import { inject, type App, type InjectionKey, type Plugin } from 'vue';
+import {
+  hasInjectionContext,
+  inject,
+  type App,
+  type InjectionKey,
+  type Plugin,
+} from 'vue';
+import { getCurrentRoutableScope } from './current-scope';
 import { hasRegisteredClass, withRoutableObjectRegistry } from './registry';
 import { bindRouterToRoutableRuntime } from './router-registration';
 import { createRoutableRuntime } from './runtime';
@@ -272,11 +279,14 @@ export const createRoutablePlugin = createRoutableScope;
  * @category Functions
  */
 export function useRoutableScope(): RoutableContainer {
-  const scope = inject(ROUTABLE_SCOPE_KEY, null);
+  const injectedScope = hasInjectionContext()
+    ? inject(ROUTABLE_SCOPE_KEY, null)
+    : null;
+  const scope = injectedScope || getCurrentRoutableScope();
 
   if (!scope) {
     throw new Error(
-      '[vue3-routable] No routable scope found. Create one with createRoutableScope(...) and install it on the app before calling useRoutableScope().' 
+      '[vue3-routable] No routable scope found. Create one with createRoutableScope(...) and install it on the app, or set it explicitly with setCurrentRoutableScope(...) or withCurrentRoutableScope(...), before calling useRoutableScope().'
     );
   }
 
@@ -296,7 +306,7 @@ export function useRoutableScope(): RoutableContainer {
 export function useRoutable<T extends object>(
   target: RoutableRegistration<T>
 ): T {
-  if (isRoutableDefinition(target)) {
+  if (isRoutableDefinition(target) && hasInjectionContext()) {
     const directInstance = inject<T | null>(target.key, null);
 
     if (directInstance) {

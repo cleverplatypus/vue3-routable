@@ -37,5 +37,6 @@ export {
   routeChainMatches,
 } from './router-handler';
 
+export * from './current-scope';
 export * from './decorators';
 export * from './scope';

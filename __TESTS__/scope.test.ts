@@ -2,7 +2,13 @@ import { mount } from '@vue/test-utils';
 import { defineComponent, h, inject } from 'vue';
 import { describe, expect, it } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { createRoutableScope, defineRoutable, useRoutable } from '../src';
+import {
+  createRoutableScope,
+  defineRoutable,
+  setCurrentRoutableScope,
+  useRoutable,
+  withCurrentRoutableScope,
+} from '../src';
 import {
   FactoryController,
   LazyScopedController,
@@ -180,5 +186,53 @@ describe.sequential('routable_scopes', () => {
 
     expect(scope.has(LazyScopedController)).toEqual(true);
     expect(scope.get(LazyScopedController).isActive).toEqual(true);
+  });
+
+  it('resolves_routables_through_the_current_scope_outside_vue', () => {
+    const scope = createRoutableScope({
+      router: createTestRouter(),
+      routables: [ScopedController],
+    });
+
+    setCurrentRoutableScope(scope);
+
+    try {
+      expect(useRoutable(ScopedController)).toBe(scope.get(ScopedController));
+    } finally {
+      setCurrentRoutableScope(null);
+    }
+  });
+
+  it('restores_the_previous_current_scope_after_async_callbacks', async () => {
+    const scopeA = createRoutableScope({
+      router: createTestRouter(),
+      routables: [ScopedController],
+    });
+    const scopeB = createRoutableScope({
+      router: createTestRouter(),
+      routables: [ScopedController],
+    });
+
+    setCurrentRoutableScope(scopeA);
+
+    try {
+      expect(useRoutable(ScopedController)).toBe(scopeA.get(ScopedController));
+
+      await withCurrentRoutableScope(scopeB, async () => {
+        expect(useRoutable(ScopedController)).toBe(
+          scopeB.get(ScopedController)
+        );
+
+        await Promise.resolve();
+
+        expect(useRoutable(ScopedController)).toBe(
+          scopeB.get(ScopedController)
+        );
+      });
+
+      expect(useRoutable(ScopedController)).toBe(scopeA.get(ScopedController));
+    } finally {
+      setCurrentRoutableScope(null);
+    }
   });
 });
