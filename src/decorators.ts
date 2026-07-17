@@ -10,10 +10,12 @@ import {
   META_METADATA,
   PARAM_METADATA,
   QUERY_METADATA,
+  THIS_HANDLER_METADATA,
   TO_METADATA,
 } from './symbols';
 import type {
   MetaDecoratorArgs,
+  RouteChangeHandlerDecoratorConfig,
   RouteMatchExpression,
   RouteMatchTarget,
   RouteResolver,
@@ -26,7 +28,9 @@ type PlainDecoratorSignature = [
   descriptor: PropertyDescriptor
 ];
 
-type RouteHandlerParams = [{ priority: number }?];
+type PriorityDecoratorParams = [{ priority?: number }?];
+
+type RouteHandlerParams = [RouteChangeHandlerDecoratorConfig?];
 
 /**
  * @category Decorators: Method
@@ -54,11 +58,12 @@ export function RouteActivated(
     throw new Error(
       'RouteActivated decorator must be used with brackets: RouteActivated(config?)'
     );
-  const priority = (args as RouteHandlerParams)[0]?.priority || 0;
+  const options = (args as RouteHandlerParams)[0] || {};
   return function (target: any, propertyKey: string) {
     const config = getRegisteredClass(target, true);
     config!.activate = {
-      priority,
+      priority: options.priority || 0,
+      runtime: options.runtime || 'both',
       handler: propertyKey,
     };
   };
@@ -75,7 +80,7 @@ export function RouteDeactivated(
     throw new Error(
       'RouteDeactivated decorator must be used with brackets: RouteDeactivated(config?)'
     );
-  const priority = (args as RouteHandlerParams)[0]?.priority || 0;
+  const options = (args as RouteHandlerParams)[0] || {};
   return function (
     target: any,
     propertyKey: string,
@@ -83,7 +88,8 @@ export function RouteDeactivated(
   ) {
     const config = getRegisteredClass(target, true);
     config!.deactivate = {
-      priority,
+      priority: options.priority || 0,
+      runtime: options.runtime || 'both',
       handler: propertyKey,
     };
   };
@@ -100,7 +106,7 @@ export function RouteUpdated(
     throw new Error(
       'RouteUpdated decorator must be used with brackets: RouteUpdated(config?)'
     );
-  const priority = (args as RouteHandlerParams)[0]?.priority || 0;
+  const options = (args as RouteHandlerParams)[0] || {};
   return function (
     target: any,
     propertyKey: string,
@@ -108,7 +114,8 @@ export function RouteUpdated(
   ) {
     const config = getRegisteredClass(target, true);
     config!.update = {
-      priority,
+      priority: options.priority || 0,
+      runtime: options.runtime || 'both',
       handler: propertyKey,
     };
   };
@@ -119,13 +126,13 @@ export function RouteUpdated(
  * @decorator
  */
 export function GuardRouteEnter(
-  ...args: PlainDecoratorSignature | RouteHandlerParams
+  ...args: PlainDecoratorSignature | PriorityDecoratorParams
 ) {
   if (args.length === 3)
     throw new Error(
       'GuardRouteEnter decorator must be used with brackets: GuardRouteEnter(config?)'
     );
-  const priority = (args as RouteHandlerParams)[0]?.priority || 0;
+  const priority = (args as PriorityDecoratorParams)[0]?.priority || 0;
   return function (
     target: any,
     propertyKey: string,
@@ -167,13 +174,13 @@ export function RouteWatcher(config: RouteWatcherConfig) {
  * @decorator
  */
 export function GuardRouteLeave(
-  ...args: PlainDecoratorSignature | RouteHandlerParams
+  ...args: PlainDecoratorSignature | PriorityDecoratorParams
 ) {
   if (args.length === 3)
     throw new Error(
       'GuardRouteLeave decorator must be used with brackets: GuardRouteLeave(config?)'
     );
-  const priority = (args as RouteHandlerParams)[0]?.priority || 0;
+  const priority = (args as PriorityDecoratorParams)[0]?.priority || 0;
   return function (target: any, propertyKey: string, _: PropertyDescriptor) {
     const config = getRegisteredClass(target, true);
 
@@ -285,4 +292,12 @@ export function Meta(path?: string) {
     META_METADATA,
     ...(path ? [path] : [])
   );
+}
+
+/**
+ * @category Decorators
+ * @decorator
+ */
+export function HandlerInfo() {
+  return getHandlerArgsMetadataDecorator(THIS_HANDLER_METADATA);
 }

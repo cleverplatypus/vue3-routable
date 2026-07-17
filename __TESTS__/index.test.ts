@@ -13,6 +13,11 @@ import testControllerAboutPath from './test-controller-about-path';
 import testControllerProduct from './test-controller-product';
 import testControllerProductOptions from './test-controller-product-options';
 import testControllerNameChain from './test-controller-name-chain';
+import {
+  browserOnlyController,
+  cancelOnFirstActivationController,
+  ssrOnlyController,
+} from './test-controller-handler-policy';
 import test from 'node:test';
 
 const routes = [
@@ -87,6 +92,21 @@ const routes = [
       meta2: 'meta2-value',
       meta3: 'meta3-value',
     },
+  },
+  {
+    path: '/runtime-browser',
+    name: 'runtime-browser',
+    component: TestComponent,
+  },
+  {
+    path: '/runtime-ssr',
+    name: 'runtime-ssr',
+    component: TestComponent,
+  },
+  {
+    path: '/cancel-once',
+    name: 'cancel-once',
+    component: TestComponent,
   },
   {
     path: '/deep',
@@ -241,6 +261,41 @@ describe.sequential('vue3-routable', () => {
 
         expect(testControllerUpdatable.activationHitCount).toEqual(1);
         expect(testControllerUpdatable.updatesAccumulator).toEqual(5);
+      });
+    });
+
+    describe('handler_runtime_and_subscription', () => {
+      it('should_activate_browser_only_handlers_in_browser_runtime', async () => {
+        browserOnlyController.activationHitCount = 0;
+        browserOnlyController.seenRuntime = null;
+
+        await routeNameRouter.push({ name: 'home' });
+        await routeNameRouter.push({ name: 'runtime-browser' });
+
+        expect(browserOnlyController.activationHitCount).toEqual(1);
+        expect(browserOnlyController.seenRuntime).toEqual('browser');
+      });
+
+      it('should_skip_ssr_only_handlers_in_browser_runtime', async () => {
+        ssrOnlyController.activationHitCount = 0;
+
+        await routeNameRouter.push({ name: 'home' });
+        await routeNameRouter.push({ name: 'runtime-ssr' });
+
+        expect(ssrOnlyController.activationHitCount).toEqual(0);
+      });
+
+      it('should_allow_handlers_to_cancel_themselves', async () => {
+        cancelOnFirstActivationController.activationHitCount = 0;
+        cancelOnFirstActivationController.seenRuntime = null;
+
+        await routeNameRouter.push({ name: 'home' });
+        await routeNameRouter.push({ name: 'cancel-once' });
+        await routeNameRouter.push({ name: 'home' });
+        await routeNameRouter.push({ name: 'cancel-once' });
+
+        expect(cancelOnFirstActivationController.activationHitCount).toEqual(1);
+        expect(cancelOnFirstActivationController.seenRuntime).toEqual('browser');
       });
     });
 

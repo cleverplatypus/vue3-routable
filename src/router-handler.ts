@@ -8,10 +8,14 @@ import {
   META_METADATA,
   PARAM_METADATA,
   QUERY_METADATA,
+  THIS_HANDLER_METADATA,
   TO_METADATA,
 } from './symbols';
 import type {
   GuardConfig,
+  HandlerRuntime,
+  HandlerRuntimePolicy,
+  RoutableHandlerInfo,
   HandlerParamMetadata,
   RoutableConfig,
   RoutableRuntime,
@@ -23,8 +27,6 @@ import type {
   RouteTargetedMatchExpression,
   RouteWatcherContext,
 } from './types';
-
-const VIRTUAL_MODULE_ID = 'virtual:vue3-routable-manifest';
 
 type LazyRoutable = {
   match: RouteMatchExpression[];
@@ -39,7 +41,22 @@ type RoutableCallableConfig = {
   target: any;
   class: string;
   config: GuardConfig | RouteChangeHandlerConfig;
+  kind:
+    | 'activate'
+    | 'deactivate'
+    | 'update'
+    | 'guard-enter'
+    | 'guard-leave';
 };
+
+type HandlerInvocationContext = {
+  subscription?: RoutableHandlerInfo;
+};
+
+const cancelledHandlersByRuntime = new WeakMap<
+  RoutableRuntime,
+  WeakMap<object, Set<string>>
+>();
 
 /**
  * Sets the meta pathName property for each route in the given root and routes arrays.
@@ -55,6 +72,83 @@ function toRouteBaseInfo(route: any): RouteBaseInfo {
     name: route.name as string,
     path: route.path,
     meta: route.meta,
+  };
+}
+
+function getExecutionRuntime(): HandlerRuntime {
+  const global = globalThis as typeof globalThis & {
+    window?: unknown;
+    document?: unknown;
+  };
+
+  return typeof global.window !== 'undefined' &&
+    typeof global.document !== 'undefined'
+    ? 'browser'
+    : 'ssr';
+}
+
+function matchesHandlerRuntime(
+  policy: HandlerRuntimePolicy | undefined,
+  runtime: HandlerRuntime
+) {
+  return !policy || policy === 'both' || policy === runtime;
+}
+
+function toHandlerCancellationKey(
+  kind: RoutableCallableConfig['kind'] | 'watcher',
+  handler: string
+) {
+  return `${kind}:${handler}`;
+}
+
+function getCancelledHandlers(
+  runtime: RoutableRuntime,
+  target: object
+) {
+  let handlersByTarget = cancelledHandlersByRuntime.get(runtime);
+
+  if (!handlersByTarget) {
+    handlersByTarget = new WeakMap<object, Set<string>>();
+    cancelledHandlersByRuntime.set(runtime, handlersByTarget);
+  }
+
+  let cancelledHandlers = handlersByTarget.get(target);
+
+  if (!cancelledHandlers) {
+    cancelledHandlers = new Set<string>();
+    handlersByTarget.set(target, cancelledHandlers);
+  }
+
+  return cancelledHandlers;
+}
+
+function isHandlerCancelled(
+  runtime: RoutableRuntime,
+  target: object,
+  kind: RoutableCallableConfig['kind'] | 'watcher',
+  handler: string
+) {
+  return getCancelledHandlers(runtime, target).has(
+    toHandlerCancellationKey(kind, handler)
+  );
+}
+
+function createHandlerSubscription(
+  runtime: RoutableRuntime,
+  target: object,
+  kind: RoutableCallableConfig['kind'] | 'watcher',
+  handler: string,
+  executionRuntime: HandlerRuntime
+): RoutableHandlerInfo {
+  return {
+    detach() {
+      getCancelledHandlers(runtime, target).add(
+        toHandlerCancellationKey(kind, handler)
+      );
+    },
+    get runtime() {
+      return executionRuntime;
+    },
   };
 }
 
@@ -111,7 +205,7 @@ async function lazyLoadRoutables(
   if (!runtime.lazyRoutableRegistry) {
     try {
       //@ts-ignore virtual module import can confuse typescript
-      const mod = await import(VIRTUAL_MODULE_ID);
+      const mod = await import('virtual:vue3-routable-manifest');
       runtime.lazyRoutableRegistry = (mod.RoutableRegistry ?? []).map(
         (entry: LazyRoutable) => ({ ...entry })
       );
@@ -125,7 +219,7 @@ async function lazyLoadRoutables(
 
   const lazyRegistry = runtime.lazyRoutableRegistry || [];
 
-  const remainingRoutables: LazyRoutable[] = [];
+  const remainingLazyEntries: LazyRoutable[] = [];
 
   for (const lazyRoutable of lazyRegistry) {
     if (
@@ -139,10 +233,10 @@ async function lazyLoadRoutables(
       await runtime.onLazyRoutableModuleLoaded?.(loaded);
       lazyRoutable.loaded = true;
     } else if (!lazyRoutable.loaded) {
-      remainingRoutables.push(lazyRoutable);
+      remainingLazyEntries.push(lazyRoutable);
     }
   }
-  runtime.lazyRoutableRegistry = remainingRoutables;
+  runtime.lazyRoutableRegistry = remainingLazyEntries;
 }
 
 /**
@@ -159,21 +253,29 @@ export async function handleRouteChange(
   from: RouteLocation,
   runtime: RoutableRuntime = defaultRoutableRuntime
 ): Promise<any> {
-  await lazyLoadRoutables(to, runtime);
-  const guards = getGuards(to, from, runtime);
-  const handlers = getHandlers(to, from, runtime);
+  const runRouteChange = async () => {
+    await lazyLoadRoutables(to, runtime);
+    const guards = getGuards(to, from, runtime);
+    const handlers = getHandlers(to, from, runtime);
 
-  sortGuardsAndHandlers(guards, handlers);
+    sortGuardsAndHandlers(guards, handlers);
 
-  const guardOutcome = await processGuards(guards, to, from);
-  let handlerOutcome: boolean | RouteRecordRaw = true;
+    const guardOutcome = await processGuards(guards, to, from, runtime);
+    let handlerOutcome: boolean | RouteRecordRaw = true;
 
-  if (guardOutcome === true) {
-    handlerOutcome = await processHandlers(handlers, to, from);
+    if (guardOutcome === true) {
+      handlerOutcome = await processHandlers(handlers, to, from, runtime);
+    }
+
+    await processWatchers(to, from, runtime);
+    return guardOutcome === true ? handlerOutcome : guardOutcome;
+  };
+
+  if (runtime.runWithContext) {
+    return runtime.runWithContext(runRouteChange);
   }
 
-  await processWatchers(to, from, runtime);
-  return guardOutcome === true ? handlerOutcome : guardOutcome;
+  return runRouteChange();
 }
 
 /**
@@ -313,7 +415,8 @@ function getHandlerParams(
   methodName: string,
   target: Object,
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  context: HandlerInvocationContext = {}
 ): Array<any> {
   const metadata = getMetadata(HANDLER_ARGS_METADATA, target, methodName) || [];
 
@@ -338,6 +441,8 @@ function getHandlerParams(
         return args.length ? get(to, args[0]) : to;
       case FROM_METADATA:
         return args.length ? get(from, args[0]) : from;
+      case THIS_HANDLER_METADATA:
+        return context.subscription;
     }
   });
 
@@ -361,6 +466,12 @@ function getGuards(
       const config = getRegisteredClass(routable);
       if (
         config.guardEnter &&
+        !isHandlerCancelled(
+          runtime,
+          routable,
+          'guard-enter',
+          config.guardEnter.handler
+        ) &&
         routeMatches(toRouteBaseInfo(to), {
           expression : config.activeRoutes,
           target: config.matchTarget,
@@ -369,10 +480,17 @@ function getGuards(
           config: config.guardEnter,
           class: config.class!,
           target: routable,
+          kind: 'guard-enter',
         });
       }
       if (
         config.guardLeave &&
+        !isHandlerCancelled(
+          runtime,
+          routable,
+          'guard-leave',
+          config.guardLeave.handler
+        ) &&
         routeMatches(toRouteBaseInfo(from), {
           expression : config.activeRoutes,
           target: config.matchTarget
@@ -381,6 +499,7 @@ function getGuards(
           config: config.guardLeave,
           class: config.class!,
           target: routable,
+          kind: 'guard-leave',
         });
       }
       return out;
@@ -427,6 +546,8 @@ function getHandlers(
   from: RouteLocation,
   runtime: RoutableRuntime
 ) {
+  const executionRuntime = getExecutionRuntime();
+
   return Array.from(runtime.routableObjects).reduce(
     (out: Array<RoutableCallableConfig>, routable) => {
       const config = getRegisteredClass(routable);
@@ -452,24 +573,53 @@ function getHandlers(
         }, runtime);
       if (!matchesFrom && !matchesTo) return out;
       if (to.name !== from.name) {
-        if (config.activate && matchesTo && !matchesFrom) {
+        if (
+          config.activate &&
+          matchesTo &&
+          !matchesFrom &&
+          matchesHandlerRuntime(config.activate.runtime, executionRuntime) &&
+          !isHandlerCancelled(
+            runtime,
+            routable,
+            'activate',
+            config.activate.handler
+          )
+        ) {
           out.push({
             config: config.activate,
             class: config.class!,
             target: routable,
+            kind: 'activate',
           });
-        } else if (config.deactivate && !matchesTo && matchesFrom) {
+        } else if (
+          config.deactivate &&
+          !matchesTo &&
+          matchesFrom &&
+          matchesHandlerRuntime(config.deactivate.runtime, executionRuntime) &&
+          !isHandlerCancelled(
+            runtime,
+            routable,
+            'deactivate',
+            config.deactivate.handler
+          )
+        ) {
           out.push({
             config: config.deactivate,
             class: config.class!,
             target: routable,
+            kind: 'deactivate',
           });
         }
-      } else if (config.update) {
+      } else if (
+        config.update &&
+        matchesHandlerRuntime(config.update.runtime, executionRuntime) &&
+        !isHandlerCancelled(runtime, routable, 'update', config.update.handler)
+      ) {
         out.push({
           config: config.update,
           class: config.class!,
           target: routable,
+          kind: 'update',
         });
       }
       return out;
@@ -501,12 +651,25 @@ function sortGuardsAndHandlers(
 async function processGuards(
   guards: Array<RoutableCallableConfig>,
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime
 ) {
+  const executionRuntime = getExecutionRuntime();
+
   for (const guard of guards) {
+    const subscription = createHandlerSubscription(
+      runtime,
+      guard.target,
+      guard.kind,
+      guard.config.handler,
+      executionRuntime
+    );
+
     const outcome = checkRouteHandlerReturnValue(
       await guard.target[guard.config.handler](
-        ...getHandlerParams(guard.config.handler, guard.target, to, from)
+        ...getHandlerParams(guard.config.handler, guard.target, to, from, {
+          subscription,
+        })
       ),
       guard.class
     );
@@ -526,12 +689,25 @@ async function processGuards(
 async function processHandlers(
   handlers: Array<RoutableCallableConfig>,
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime
 ) {
+  const executionRuntime = getExecutionRuntime();
+
   for (const handler of handlers) {
+    const subscription = createHandlerSubscription(
+      runtime,
+      handler.target,
+      handler.kind,
+      handler.config.handler,
+      executionRuntime
+    );
+
     const outcome = checkRouteHandlerReturnValue(
       await handler.target[handler.config.handler](
-        ...getHandlerParams(handler.config.handler, handler.target, to, from)
+        ...getHandlerParams(handler.config.handler, handler.target, to, from, {
+          subscription,
+        })
       ),
       handler.class
     );
@@ -646,10 +822,21 @@ function getPrioritisedActiveWatchers(
 async function processWatcher(
   context: RouteWatcherContext,
   to: RouteLocation,
-  from: RouteLocation
+  from: RouteLocation,
+  runtime: RoutableRuntime
 ) {
+  const subscription = createHandlerSubscription(
+    runtime,
+    context.target!,
+    'watcher',
+    context.handler,
+    getExecutionRuntime()
+  );
+
   await context.target![context.handler](
-    ...getHandlerParams(context.handler, context.target, to, from)
+    ...getHandlerParams(context.handler, context.target, to, from, {
+      subscription,
+    })
   );
 }
 
@@ -666,6 +853,10 @@ async function processWatchers(
 ) {
   const watchers = getPrioritisedActiveWatchers(to, from, runtime);
   for (const watcher of watchers) {
-    await processWatcher(watcher, to, from);
+    if (isHandlerCancelled(runtime, watcher.target!, 'watcher', watcher.handler)) {
+      continue;
+    }
+
+    await processWatcher(watcher, to, from, runtime);
   }
 }

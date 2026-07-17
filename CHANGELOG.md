@@ -4,13 +4,20 @@ All notable changes to this project will be documented in this file.
 
 This project follows Semantic Versioning.
 
+## [Unreleased]
+
+### Changed
+
+- Stopped re-exporting `defineScoped(...)`, `getScopeContext()`, `setScopeContext(...)`, `getCurrentScope()`, `setCurrentScope(...)`, and `withCurrentScope(...)` from `vue3-routable`. Import these directly from `scoped-container`.
+- Updated the docs and examples to treat `scoped-container` as a direct app dependency for scoped registrations and ambient scope helpers.
+
 ## [1.1.0] - 2026-05-13
 
 ### Added
 
-- Added an SSR-safe scoped runtime API with `createRoutableScope`, `createRoutablePlugin`, `defineRoutable`, `useRoutable`, `useRoutableScope`, `injectRoutable`, and `ROUTABLE_SCOPE_KEY`.
+- Added an SSR-safe scoped runtime API with `createRoutableScope`, `defineScoped`, `useScoped`, `useScopedScope`, `getCurrentScope`, `setCurrentScope`, `withCurrentScope`, and `ROUTABLE_SCOPE_KEY`.
 - Added support for request-local routable registration so controller instances can be created at app creation time instead of module import time.
-- Added scope-aware lazy registration for modules that export either `defineRoutable(...)` definitions or decorated `@Routable(...)` classes.
+- Added scope-aware lazy registration for modules that export decorated `@Routable(...)` classes.
 - Added focused coverage for isolated scopes and lazy-loaded scoped registrations.
 
 ### Changed

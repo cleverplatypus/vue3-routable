@@ -6,38 +6,42 @@ Vue3 Routable is a lightweight, decorator-based routing library that brings simp
 
 Install Vue3 Routable using your preferred package manager:
 
+The intended split is: `scoped-container` is the extracted framework-agnostic core for `defineScoped(...)`, `withCurrentScope(...)`, and the scope-context helpers, while `vue3-routable` adds the Vue-aware route activation and lookup helpers on top.
+
+If you use the scoped runtime, install both packages and import the generic scoped APIs from `scoped-container` directly.
+
 ::: code-group
 
 ```bash [npm]
-npm install vue3-routable
+npm install vue3-routable scoped-container
 ```
 
 ```bash [yarn]
-yarn add vue3-routable
+yarn add @vue3-routable/core @vue3-routable/ssr scoped-container
 ```
 
 ```bash [pnpm]
-pnpm add vue3-routable
+pnpm add @vue3-routable/core @vue3-routable/ssr scoped-container
 ```
 
 :::
 
-Optionally install the [lazy loading vite plugin](https://www.npmjs.com/package/vue3-routable-vite-plugin) for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
+Optionally install the [lazy loading vite plugin](https://www.npmjs.com/package/@vue3-routable/vite-plugin) for better performance in bigger projects (See [Lazy Loading](#lazy-loading) for more info):
 
-<Badge type="tip" text="Since v1.1.0" /> Install `vue3-routable-vite-plugin` for the active plugin release line. The legacy `vue3-routable-lazy-loader` package should be treated as deprecated in favor of the renamed package.
+<Badge type="tip" text="Since v1.2.0" /> Install `@vue3-routable/vite-plugin` for the active plugin release line. The legacy `vue3-routable-lazy-loader` package should be treated as deprecated in favor of the renamed package.
 
 ::: code-group
 
 ```bash [npm]
-npm install --D vue3-routable-vite-plugin
+npm install --D @vue3-routable/vite-plugin
 ```
 
 ```bash [yarn]
-yarn add --dev vue3-routable-vite-plugin
+yarn add --dev @vue3-routable/vite-plugin
 ```
 
 ```bash [pnpm]
-pnpm add --save-dev vue3-routable-vite-plugin
+pnpm add --save-dev @vue3-routable/vite-plugin
 ```
 
 :::
@@ -57,13 +61,83 @@ Vue3 Routable requires TypeScript with experimental decorators enabled. Add this
 
 ## Quick Start
 
+### Fast path with direct hydration registrations
+
+<Badge type="tip" text="Since v1.2.0" />
+
+For the scoped API in this guide, install `scoped-container` alongside `@vue3-routable/core` and `@vue3-routable/ssr`.
+
+If you want the shortest SSR wiring, add `@vue3-routable/vite-plugin` for the lazy-route manifest and keep hydration registration lists explicit with `getSafeSingletonRegistration(...)`.
+
+::: code-group
+
+```typescript [vite.config.ts]
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { vue3RoutableVitePlugin } from '@vue3-routable/vite-plugin'
+
+export default defineConfig({
+  plugins: [vue(), vue3RoutableVitePlugin()],
+})
+```
+
+```typescript [product-model.ts]
+import { reactive } from 'vue'
+import { safeSingleton } from '@vue3-routable/ssr'
+import { getHydratedState } from '@vue3-routable/ssr/hydration'
+
+export type Product = {
+  id: string
+  name: string
+  description: string
+}
+
+export type ProductModelState = {
+  loading: boolean
+  data: Product | null
+}
+
+export function createProductModel() {
+  const state: ProductModelState = {
+    loading: false,
+    data: null,
+  }
+
+  return reactive(state)
+}
+
+export type ProductModel = ReturnType<typeof createProductModel>
+
+export const productModel = safeSingleton(createProductModel, {
+  label: 'product-model',
+  seedFactory: getHydratedState,
+})
+```
+
+```typescript [hydratable-models.ts]
+import { getSafeSingletonRegistration } from '@vue3-routable/ssr'
+import { productModel } from './product-model'
+
+const productModelRegistration = getSafeSingletonRegistration(productModel)
+
+if (!productModelRegistration) {
+  throw new Error('Expected productModel to be created with safeSingleton(...)')
+}
+
+export const hydratableModels = [productModelRegistration]
+```
+
+:::
+
+Components and controllers can keep importing the `safeSingleton(...)` proxy directly. SSR code performs one explicit lookup when it needs the backing registration for hydration.
+
 ### 1. Create the app scope
 
-Create a fresh routable scope alongside your Vue app. That keeps controller instances local to the current app creation, which is safe for SSR and still works fine in client-only apps.
+Create a fresh routable scope alongside your Vue app. That keeps registered scoped instances local to the current app creation, which is safe for SSR and still works fine in client-only apps.
 
-<Badge type="tip" text="Since v1.1.0" />
+<Badge type="tip" text="Since v1.2.0" />
 
-This scoped API, including `createRoutableScope(...)`, `defineRoutable(...)`, and `useRoutable(...)`, is part of the `v1.1.0` release line.
+This scoped runtime, together with `scoped-container` registrations and `useScoped(...)`, is part of the `v1.2.0` release line.
 
 For a full SSR app-factory example, including request-scoped reactive state and lazy loading, see [SSR Usage](/ssr).
 
@@ -71,9 +145,9 @@ For a full SSR app-factory example, including request-scoped reactive state and 
 // main.ts
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { createRoutableScope } from 'vue3-routable'
+import { createRoutableScope } from '@vue3-routable/ssr'
 import App from './App.vue'
-import { productController } from '@/controllers/product-controller'
+import { ProductController } from '@/controllers/product-controller'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -85,7 +159,7 @@ const router = createRouter({
 
 const routableScope = createRoutableScope({
   router,
-  routables: [productController],
+  registrations: [ProductController],
 })
 
 createApp(App).use(router).use(routableScope).mount('#app')
@@ -96,7 +170,7 @@ createApp(App).use(router).use(routableScope).mount('#app')
 Controllers are in charge of the business logic for a specific route. 
 Models contain the data for the business logic and provide reactivity for the view.
 
-Avoid `export default new ProductController()` in SSR applications. Export either the class itself or a `defineRoutable(...)` registration so each app/request gets a fresh instance.
+Avoid `export default new ProductController()` in SSR applications. Export the decorated class itself, and register any additional request-scoped state with `defineScoped(...)` so each app/request gets fresh instances.
 
 The model below is module-scoped for brevity. In SSR, make reactive models request-scoped too; the dedicated [SSR Usage](/ssr) page shows both a controller-owned state pattern and a separate model factory pattern.
 
@@ -109,8 +183,7 @@ import {
   RouteActivated,
   RouteDeactivated,
   Param,
-  defineRoutable,
-} from 'vue3-routable'
+} from '@vue3-routable/core'
 import productModel, {resetModel} from '@/models/product'
 
 @Routable('/products/:id')
@@ -126,8 +199,6 @@ export class ProductController {
     resetModel()
   }
 }
-
-export const productController = defineRoutable(ProductController)
 ```
 
 ```typescript [product-model.ts]
@@ -156,7 +227,7 @@ export function resetModel() {
 ### 3. Expose the reactive data to your component
 
 Expose the reactive data to your component by importing the model.
-As soon as the route is activated, the controller will load the data and update the model. If the component needs to call controller methods directly, you can inject the scoped instance too.
+As soon as the route is activated, the controller will load the data and update the model. In the `safeSingleton(...)` flow, components can import that model directly. `useScoped(...)` or plain Vue `inject(...)` still works when you want explicit scope resolution.
 ```vue
 <!-- ProductDetailView.vue -->
 <template>
@@ -167,17 +238,11 @@ As soon as the route is activated, the controller will load the data and update 
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue'
-
-import productModel from '@/models/product-model'
-import { productController } from '@/controllers/product-controller'
-
-const controller = inject(productController.key)
-
+import { productModel } from '@/models/product-model'
 </script>
 ```
 
-<Badge type="tip" text="Since v1.1.0" /> If your controller has no constructor arguments, you can skip `defineRoutable(...)`, register the class directly in `createRoutableScope({ routables: [ProductController] })`, and consume it with `useRoutable(ProductController)`.
+<Badge type="tip" text="Since v1.2.0" /> Register decorated controller classes directly in `createRoutableScope({ registrations: [ProductController] })`, and consume them with `useScoped(ProductController)`.
 
 For client-only SPAs, the legacy `registerRouter(router)` plus module-level singleton instances still works, but the scoped setup above is the SSR-safe default.
 
@@ -256,7 +321,7 @@ export class DashboardController {
 
 ### Parameter Injection
 
-Easily access route parameters, query strings, and navigation data:
+Easily access route parameters, query strings, navigation data, and the current handler control object:
 
 ```typescript
 @Routable('/users/:id')
@@ -267,15 +332,18 @@ export class UserController {
     @Query('tab') activeTab: string,
     @Meta('permissions') permissions: string[],
     @To() toRoute: RouteLocationNormalized,
-    @From() fromRoute: RouteLocationNormalized
+    @From() fromRoute: RouteLocationNormalized,
+    @HandlerInfo() handler: RoutableHandlerInfo
   ) {
     // userId contains the :id parameter
     // activeTab contains the ?tab=... query parameter
     // toRoute and fromRoute contain full route objects
+    // handler.runtime is 'ssr' or 'browser'
+    // handler.detach() permanently disables this handler for the current instance
   }
 }
 ```
-> The '@To' and '@From' decorators also accept a path parameter to inject a specific property of the route object.
+> The '@To' and '@From' decorators also accept a path parameter to inject a specific property of the route object. `@HandlerInfo()` injects the current `RoutableHandlerInfo`; see [Route handlers control](#route-handlers-control) for its lifecycle semantics.
 
 ### Route Guards
 
@@ -391,6 +459,54 @@ registerRouter(router, {
 })
 ```
 
+### Route handlers control
+
+Route-change handlers can be targeted to a specific runtime and can also receive a control object for the current invocation.
+
+The route-change decorators accept `{ priority?, runtime? }`:
+
+- `@RouteActivated({ runtime: 'ssr' | 'browser' | 'both' })`
+- `@RouteUpdated({ runtime: 'ssr' | 'browser' | 'both' })`
+- `@RouteDeactivated({ runtime: 'ssr' | 'browser' | 'both' })`
+
+If `runtime` is omitted, the default is `'both'`.
+
+`@HandlerInfo()` injects a `RoutableHandlerInfo` object with:
+
+- `handler.runtime`, which is `'ssr'` or `'browser'` for the current invocation
+- `handler.detach()`, which permanently disables that handler for the current controller instance
+
+```typescript
+import type { RouteLocationNormalized } from 'vue-router'
+import {
+  HandlerInfo,
+  Routable,
+  RouteActivated,
+  RouteUpdated,
+  To,
+  type RoutableHandlerInfo,
+} from '@vue3-routable/core'
+
+@Routable(/.*/)
+export class CurrentStoreController {
+  @RouteActivated({ priority: 100, runtime: 'ssr' })
+  async primeInitialStore(
+    @To() to: RouteLocationNormalized,
+    @HandlerInfo() handler: RoutableHandlerInfo
+  ) {
+    await this.loadStoreFromRoute(to)
+    handler.detach()
+  }
+
+  @RouteUpdated({ runtime: 'browser' })
+  trackClientNavigation() {
+    this.sendAnalytics()
+  }
+}
+```
+
+Use runtime targeting when the same controller instance has both server-only and browser-only responsibilities. Use `@HandlerInfo()` when a handler needs to branch on the current runtime or permanently remove itself after an early one-shot execution.
+
 ### Lazy loading
 By default the library will match routes on routable objects that are in the main application bundle. For that to happen, you have to have your routable files referenced somewhere in your application.
 
@@ -401,17 +517,17 @@ By default the library will match routes on routable objects that are in the mai
 To make sure the file is included in the bundle, you can use the `registerRoutableClasses` function to register the routable classes.
 
 ```typescript
-import { registerRoutableClasses } from 'vue3-routable'
+import { registerRoutableClasses } from '@vue3-routable/core'
 
 registerRoutableClasses(ProductController, ProductDetailController)
 ```
 
-You can include the `vue3-routable-vite-plugin` package to lazy load your routables.
+You can include the `@vue3-routable/vite-plugin` package to lazy load your routables.
 
 ```typescript
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { vue3RoutableVitePlugin } from 'vue3-routable-vite-plugin'
+import { vue3RoutableVitePlugin } from '@vue3-routable/vite-plugin'
 
 export default defineConfig({
   plugins: [vue(), vue3RoutableVitePlugin()],
@@ -423,11 +539,13 @@ The renamed package still exports `vue3RoutableLazyLoader` and `vue3RoutablePlug
 The plugin will automatically register the routable classes annotated with `@Routable` and will lazy load them when needed.
 You won't need to call `registerRoutableClasses` for those.
 
-<Badge type="tip" text="Since v1.1.0" /> The scope-aware lazy registration path described below works with the `v1.1.0` scoped runtime.
+Hydration lists stay explicit: import the same `safeSingleton(...)` values your runtime uses and resolve their backing registrations with `getSafeSingletonRegistration(...)` where SSR state is collected.
+
+<Badge type="tip" text="Since v1.2.0" /> The scope-aware lazy registration path described below works with the `v1.2.0` scoped runtime.
 
 Lazy loading only decides when a module is imported. In SSR, still create controller instances inside `createRoutableScope(...)` and avoid exporting singleton controller instances from the lazy-loaded module.
 
-There are situations where annotating the class is not viable. For instance, a class can be instantitated multiple times for different routes, each with different parameters. In this case, you can export the `ROUTABLE_TARGETS` constant that instructs the lazy-loading plugin when to load the file.
+There are situations where just annotating the class is not a viable solution. For instance, a class can be instantitated multiple times for different routes, each with different parameters. In this case, you can export the `ROUTABLE_TARGETS` constant that instructs the lazy-loading plugin when to load the file.
 
 In the following example a generic ListController is instantiated for multiple routes and its specifics is driven by the `source` property.
 
@@ -457,23 +575,24 @@ export default class ListController {
 ```
 
 ```typescript [customers-list-controller.ts]
-import { defineRoutable } from 'vue3-routable'
+import { Routable } from '@vue3-routable/core'
 import ListController from './list-controller'
 
 export const ROUTABLE_TARGETS = ['customers-list'];
 
-export const customersListController = defineRoutable(
-  'customers-list-controller',
-  () =>
-    new ListController({
+@Routable(ROUTABLE_TARGETS)
+export class CustomersListController extends ListController {
+  constructor() {
+    super({
       targetRoutes: ROUTABLE_TARGETS,
       source: 'customers',
     })
-)
+  }
+}
 ```
 :::
 
-Register `customersListController` in the scope you create for the current app or SSR request.
+When the route matches, the active scope registers `CustomersListController` after the lazy module is loaded.
 
 ## What's Next?
 

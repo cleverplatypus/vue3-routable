@@ -27,7 +27,7 @@ features:
     details: Transform your route components into organized MVC controllers with simple TypeScript decorators. Handle route lifecycle events, parameter injection, and navigation guards with clean, declarative syntax.
   - icon: 🧩
     title: SSR-Ready Scopes
-    details: Create a fresh routable scope per app or request. Lazy-loaded classes and defineRoutable registrations attach to the active scope without relying on process-wide singletons.
+    details: Create a fresh routable scope per app or request. Lazy-loaded decorated classes attach to the active scope without relying on process-wide singletons.
   - icon: ⚡
     title: Bundle Optimization
     details: Built-in code splitting support ensures your route controllers are loaded only when needed. Improve your app's initial load time while maintaining clean separation of concerns.
@@ -57,8 +57,7 @@ import {
   RouteActivated,
   RouteDeactivated,
   Param,
-  defineRoutable,
-} from 'vue3-routable'
+} from '@vue3-routable/core'
 import productModel from '@/models/product-model'
 
 @Routable('/products/:id')
@@ -73,12 +72,10 @@ export class ProductController {
     // Clean up subscriptions, timers, etc.
   }
 }
-
-export const productController = defineRoutable(ProductController)
 ```
 
-<Badge type="tip" text="Since v1.1.0" />
+<Badge type="tip" text="Since v1.2.0" />
 
-The scoped SSR API shown here, including `defineRoutable(...)`, is part of the `v1.1.0` release line.
+The scoped SSR API shown here, together with `createRoutableScope(...)` and direct `scoped-container` registrations, is part of the `v1.2.0` release line.
 
 Ready to simplify your Vue routing? [Get started with the guide](/guide), check the [SSR usage guide](/ssr), or explore the [API documentation](/api/).

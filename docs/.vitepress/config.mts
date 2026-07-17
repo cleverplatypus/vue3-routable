@@ -38,7 +38,8 @@ export default defineConfig({
         text: 'Advanced',
         items: [
           { text: 'Matching Target', link: '/guide#configuring-matching-target' },
-          { text: 'Lazy Loading', link: '/guide#lazy-loading' }
+          { text: 'Lazy Loading', link: '/guide#lazy-loading' },
+          { text: 'Injection Deep Dive', link: '/injection-deep-dive' }
         ]
       },
       {

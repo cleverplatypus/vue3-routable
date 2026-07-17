@@ -1,20 +1,41 @@
 {
-  "name": "vue3-routable",
-  "version": "1.1.0",
+  "name": "@vue3-routable/core",
+  "version": "1.2.0-beta.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cleverplatypus/vue3-routable.git"
   },
   "description": "Small utility to annotate classes of objects to be activated/deactivated upon vue-router routes change ",
-  "main": "src/index.ts",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./internal": {
+      "types": "./src/internal.d.ts",
+      "default": "./src/internal.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Nicola Dal Pont",
   "license": "MIT",
   "scripts": {
     "test": "vitest",
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "pack:check": "npm pack --dry-run",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "docs:jsdoc": "typedoc && cp docs/api/README.md docs/api/index.md"
+    "docs:jsdoc": "typedoc && cp docs/api/README.md docs/api/index.md",
+    "yalc:link:scoped-container": "yalc link scoped-container",
+    "deprecate:legacy": "npm deprecate vue3-routable@\">=0.0.0\" \"Deprecated in favor of @vue3-routable/core\""
   },
   "prettier" : {
     "singleQuote": true,
@@ -48,7 +69,7 @@
     "tsc": "^2.0.4",
     "typedoc": "^0.27.2",
     "typedoc-plugin-markdown": "^4.3.1",
-    "typescript": "^5.1.6",
+    "typescript": "^5.8.3",
     "vitepress": "^1.3.4",
     "vitepress-jsdoc": "^1.0.4",
     "vitest": "^2.1.8",

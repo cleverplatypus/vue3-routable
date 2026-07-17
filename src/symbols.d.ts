@@ -1,0 +1,9 @@
+export declare const HANDLER_ARGS_METADATA: unique symbol;
+export declare const HANDLER_METADATA: unique symbol;
+export declare const PARAM_METADATA: unique symbol;
+export declare const TO_METADATA: unique symbol;
+export declare const FROM_METADATA: unique symbol;
+export declare const QUERY_METADATA: unique symbol;
+export declare const META_METADATA: unique symbol;
+export declare const THIS_HANDLER_METADATA: unique symbol;
+export declare const ROUTABLE_OBJECT_UUID: unique symbol;

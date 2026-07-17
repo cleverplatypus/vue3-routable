@@ -37,6 +37,10 @@
 
 Vue3 Routable brings simplified MVC architecture to Vue 3, letting you organize route logic with intuitive TypeScript decorators. No framework-specific concepts to master—if you know TypeScript and vue-router, you're already 90% there.
 
+The framework-agnostic scoped container core now lives in the separate `scoped-container` package so the routing layer stays focused on Vue and vue-router concerns.
+
+Until `scoped-container` is published to npm, local co-development uses `yalc`: run `npm run yalc:publish` in the sibling `scoped-container` repo, then run `yarn yalc:link:scoped-container` in this repo before typechecking or running tests.
+
 Check out the [new docs](https://cleverplatypus.github.io/vue3-routable)
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
@@ -61,7 +65,6 @@ import {
   RouteActivated,
   RouteDeactivated,
   Param,
-  defineRoutable,
 } from 'vue3-routable'
 import productModel from '@/models/product-model'
 
@@ -77,22 +80,87 @@ export class ProductController {
     // Clean up subscriptions, timers, etc.
   }
 }
-
-export const productController = defineRoutable(ProductController)
 ```
 
-The scoped registration helpers shown here, including `defineRoutable(...)`, are available starting in `v1.1.0`.
+The scoped SSR runtime shown here is available starting in `v1.1.0`.
+
+## Easy DX With the Vite Plugin
+
+Available since `v1.1.0`.
+
+If you use scoped registrations or ambient scope helpers, add `scoped-container` as a direct app dependency and import those APIs from there.
+
+If you add `vue3-routable-vite-plugin`, it generates the lazy-route manifest plus typed declarations for that manifest. Hydration stays explicit and uses the same `safeSingleton(...)` imports your runtime code already uses.
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { vue3RoutableVitePlugin } from 'vue3-routable-vite-plugin'
+
+export default defineConfig({
+  plugins: [vue(), vue3RoutableVitePlugin()],
+})
+```
+
+```typescript
+// models/product-model.ts
+import { reactive } from 'vue'
+import { safeSingleton } from 'scoped-container'
+
+export type Product = {
+  id: string
+  name: string
+  description: string
+}
+
+export type ProductModelState = {
+  loading: boolean
+  data: Product | null
+}
+
+export function createProductModel() {
+  const state: ProductModelState = {
+    loading: false,
+    data: null,
+  }
+
+  return reactive(state)
+}
+
+export type ProductModel = ReturnType<typeof createProductModel>
+
+export const productModel = safeSingleton(createProductModel, {
+  label: 'product-model',
+})
+```
+
+```typescript
+// server hydration list
+import { getSafeSingletonRegistration } from 'scoped-container'
+import { productModel } from '@/models/product-model'
+
+const productModelRegistration = getSafeSingletonRegistration(productModel)
+
+if (!productModelRegistration) {
+  throw new Error('Expected productModel to be created with safeSingleton(...)')
+}
+
+export const hydratableModels = [productModelRegistration]
+```
+
+This keeps the app code and hydration code on the same direct imports, with one explicit registration lookup where SSR state is collected.
 
 ## SSR-Safe Registration
 
 Available since `v1.1.0`.
 
-Avoid `export default new Controller()` in SSR. Create a fresh scope when the app is created and register either zero-argument controller classes or explicit factories.
+Avoid `export default new Controller()` in SSR. Create a fresh scope when the app is created and register decorated controller classes plus any scoped registrations they depend on.
 
 ```typescript
-import { createRoutableScope } from 'vue3-routable'
+import { createRoutableScope } from 'vue3-routable/ssr'
 import { createRouter, createWebHistory } from 'vue-router'
-import { productController } from '@/controllers/product-controller'
+import { ProductController } from '@/controllers/product-controller'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -101,14 +169,18 @@ const router = createRouter({
 
 const routableScope = createRoutableScope({
   router,
-  routables: [productController],
+  registrations: [ProductController],
 })
 
 app.use(router)
 app.use(routableScope)
 ```
 
-Inside components, use `useRoutable(productController)` or plain Vue `inject(productController.key)` to access the scoped instance.
+Inside components, use `useScoped(ProductController)` for controllers. Plain Vue `inject(...)` still works for explicit `defineScoped(...)` registrations when you want to expose your own injection key.
+
+For direct Vue injection with explicit registrations, provide your own `InjectionKey` alongside the scoped registration and expose that key from the app.
+
+For Node-compatible SSR runtimes, including AWS Lambda with a Node runtime, Bun, and Deno's Node compatibility layer, you can install the optional `AsyncLocalStorage` adapter from `vue3-routable/async-context-node` to keep SSR scope lookups request-local across async work outside Vue injection.
 
 ## Key Features
 
@@ -122,14 +194,19 @@ Inside components, use `useRoutable(productController)` or plain Vue `inject(pro
 ## Installation
 
 
+The intended split is: `scoped-container` is the extracted framework-agnostic core for `defineScoped(...)`, `safeSingleton(...)`, `withCurrentScope(...)`, and the scope-context helpers, while `vue3-routable` adds decorators and the routing lifecycle on top, with SSR-oriented scope helpers exposed from `vue3-routable/ssr`.
+
+If you use the scoped runtime, install both packages and import the generic scoped APIs from `scoped-container` directly.
+
+
 ```bash [npm]
-npm install vue3-routable
+npm install vue3-routable scoped-container
 ```
 
 ```bash [yarn]
-yarn add vue3-routable
+yarn add vue3-routable scoped-container
 ```
 
 ```bash [pnpm]
-pnpm add vue3-routable
+pnpm add vue3-routable scoped-container
 ```

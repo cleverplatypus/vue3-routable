@@ -1,11 +1,11 @@
-import type { InjectionKey } from 'vue';
-import type { RouteLocation, RouteRecordRaw, Router } from 'vue-router';
+import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import {
   FROM_METADATA,
   HANDLER_ARGS_METADATA,
   META_METADATA,
   PARAM_METADATA,
   QUERY_METADATA,
+  THIS_HANDLER_METADATA,
   TO_METADATA,
 } from './symbols';
 
@@ -17,9 +17,24 @@ export type MethodName = string;
 
 export type RouteHandlerEventType = 'enter' | 'leave' | 'update';
 
+export type HandlerRuntime = 'ssr' | 'browser';
+
+export type HandlerRuntimePolicy = HandlerRuntime | 'both';
+
+export type RoutableHandlerInfo = {
+  detach(): void;
+  readonly runtime: HandlerRuntime;
+};
+
+export type RouteChangeHandlerDecoratorConfig = {
+  priority?: number;
+  runtime?: HandlerRuntimePolicy;
+};
+
 export type RouteChangeHandlerConfig = {
   handler: MethodName;
   priority: number;
+  runtime: HandlerRuntimePolicy;
   class?: string;
 };
 
@@ -40,7 +55,8 @@ export type ParamMetadataType =
   | typeof PARAM_METADATA
   | typeof QUERY_METADATA
   | typeof META_METADATA
-  | typeof FROM_METADATA;
+  | typeof FROM_METADATA
+  | typeof THIS_HANDLER_METADATA;
 
 /**
  * @ignore
@@ -66,40 +82,14 @@ export type RoutesLookupEntry = {
 
 export type RoutesLookupTable = Map<string, RoutesLookupEntry>;
 
-export type RoutableRuntime = {
+export type RoutableRuntime<TScope = unknown> = {
   config: RoutingConfig;
   routesLUT: RoutesLookupTable;
   routableObjects: Set<object>;
+  scope?: TScope;
+  runWithContext?: <T>(callback: () => T) => T;
   lazyRoutableRegistry?: Array<any>;
   onLazyRoutableModuleLoaded?: (loadedModule: Record<string, any>) => void | Promise<void>;
-};
-
-export type RoutableClass<T extends object = any> = new (...args: any[]) => T;
-
-export type RoutableFactory<T extends object = any> = () => T;
-
-export type RoutableDefinition<T extends object = any> = {
-  key: InjectionKey<T>;
-  create: RoutableFactory<T>;
-  label: string;
-  source?: RoutableClass<T>;
-};
-
-export type RoutableRegistration<T extends object = any> =
-  | RoutableClass<T>
-  | RoutableDefinition<T>;
-
-export type RoutableContainer = {
-  runtime: RoutableRuntime;
-  get<T extends object>(target: RoutableRegistration<T>): T;
-  has<T extends object>(target: RoutableRegistration<T>): boolean;
-  register(...targets: RoutableRegistration<any>[]): void;
-};
-
-export type CreateRoutableScopeOptions = {
-  router: Router;
-  routing?: Partial<RoutingConfig>;
-  routables: RoutableRegistration<any>[];
 };
 
 export type GuardConfig = {
@@ -151,3 +141,6 @@ export type RoutableConfig = {
 export type MetaDecoratorArgs =
   | string
   | RequireAtLeastOneParameter<{ path?: string; route?: 'from' | 'to' }>;
+
+
+  

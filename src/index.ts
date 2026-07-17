@@ -37,6 +37,11 @@ export {
   routeChainMatches,
 } from './router-handler';
 
-export * from './current-scope';
+export type {
+  HandlerRuntime,
+  HandlerRuntimePolicy,
+  RoutableHandlerInfo,
+  RouteChangeHandlerDecoratorConfig,
+} from './types';
+
 export * from './decorators';
-export * from './scope';
